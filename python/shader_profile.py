@@ -3,6 +3,7 @@ from datetime import datetime
 
 import argparse
 import csv
+import functools
 import json
 import multiprocessing as mp
 import os
@@ -68,7 +69,7 @@ class ShaderCompileResult:
         csv_writer.writerow(self.__dict__)
 
 
-def exec_malioc(filepath):
+def exec_malioc(filepath, target_vulkan):
     """Execute Mali offline compiler and return json format string."""
 
     _, ext = os.path.splitext(filepath)
@@ -76,7 +77,8 @@ def exec_malioc(filepath):
         raise NotImplementedError(f'Not support shader type: {ext}')
 
     shader_type = _SHADER_TYPE_MAP[ext]
-    cmd = f'malioc --{shader_type} --format json {filepath}'
+    vulkan_flag = '--vulkan' if target_vulkan else ''
+    cmd = f'malioc {vulkan_flag} --{shader_type} --format json {filepath}'
 
     try:
         result = sp.check_output(cmd, stderr=sp.STDOUT).decode('utf-8')
@@ -156,7 +158,7 @@ def custom_json_decoder(d):
     return namedtuple('CompileResult', d.keys())(*d.values())
 
 
-def generate_shader_profile(shader_folder, output_dir, process_count=4):
+def generate_shader_profile(shader_folder, output_dir, process_count, target_vulkan):
 
     shader_file_list = _get_shader_files(shader_folder)
     if not shader_file_list:
@@ -169,12 +171,17 @@ def generate_shader_profile(shader_folder, output_dir, process_count=4):
     time_token = _get_time_token()
     report_csv_path = os.path.join(output_dir, f'malioc_report_{time_token}.csv')
 
+    compile_func = functools.partial(exec_malioc, target_vulkan=target_vulkan)
+    if target_vulkan:
+        print('malioc does not support multi-processes compilation, fall back to single process instead!')
+        process_count = 1
+
     with open(report_csv_path, 'w', newline='') as csvfile:
         csv_writer = csv.DictWriter(csvfile, fieldnames=_FIELD_LABEL_MAP.keys())
         csv_writer.writerow(_FIELD_LABEL_MAP)
 
         with mp.Pool(process_count) as pool:
-            for output_str in pool.imap(exec_malioc, shader_file_list):
+            for output_str in pool.imap(compile_func, shader_file_list):
                 result_json = json.loads(output_str, object_hook=custom_json_decoder)
                 # Since we invoke malioc for each shader file, thus the shaders array only contains one entity.
                 # We could directly pop the item in the shaders array.
@@ -187,6 +194,7 @@ if __name__ == '__main__':
     parser.add_argument('shader_path', help='Directory of shader files')
     parser.add_argument('-j', '--job-count', type=int, default=4, help='Number of compiling jobs')
     parser.add_argument('-o', '--output', type=str, default='.', help='Output directory')
+    parser.add_argument('--vulkan', action='store_true', help='Target the Vulkan API')
     args = parser.parse_args()
 
-    generate_shader_profile(args.shader_path, args.output, args.job_count)
+    generate_shader_profile(args.shader_path, args.output, args.job_count, args.vulkan)
