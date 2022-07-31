@@ -32,6 +32,7 @@ _FIELD_LABEL_MAP = {
     'shader_bounds': 'Bounds',
 
     'work_registers_used': 'Work Registers',
+    'thread_occupancy': 'Thread Occupancy',
     'uniform_registers_used': 'Uniform Registers',
     'has_stack_spilling': 'Stack Spilling',
     'stack_spill_bytes': 'Spill Bytes',
