@@ -123,7 +123,10 @@ def write_compile_result_to_csv(shader_compile_result, csv_writer):
             result.shader_bounds = ','.join(bound_pipelines)
 
             for idx, props in enumerate(shader_variant.properties):
-                setattr(result, props.name, props.value)
+                if props.name in _FIELD_LABEL_MAP:
+                    setattr(result, props.name, props.value)
+                else:
+                    print(f'Unrecognized property "{props.name}"')
 
             if csv_writer:
                 result.write_to_csv_dict(csv_writer)
