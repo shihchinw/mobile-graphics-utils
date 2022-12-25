@@ -1,0 +1,358 @@
+# -----------------------------------------------------------------------------
+# Basic Android helper commands
+# -----------------------------------------------------------------------------
+function Enter-AdbShell { adb shell "$Args" }
+Set-Alias -Name as -Value Enter-AdbShell
+
+function Get-EncodedFilename {
+    param (
+        [Parameter(Mandatory)]
+        [string]$Filename,
+        [string]$FileExt = ''
+    )
+
+    # $Filename = [io.path]::GetFileNameWithoutExtension($Filename)
+    $Timestamp = $(Get-Date -f MMdd_hhmmss)
+    $OutFileName = "{0}_{1}{2}" -f ($Filename, $Timestamp, $FileExt)
+    return $OutFileName
+}
+
+<#
+.SYNOPSIS
+Save a screen capture on device to local machine.
+
+.PARAMETER Filename
+File name of output image.
+#>
+function Save-DeviceScreenCap {
+    param (
+        [ValidateNotNullOrEmpty()]
+        [string]$Filename = "capture"
+    )
+
+    $OutFileName = Get-EncodedFilename $Filename '.png'
+    $DeviceFilePath = '/sdcard/capture.png'
+    adb shell screencap $DeviceFilePath
+    adb pull $DeviceFilePath $OutFileName
+    Write-Host "Saved screen cap to '$OutFilename'"
+}
+
+<#
+.SYNOPSIS
+Save a screen recording on device to local machine.
+
+.PARAMETER Duration
+Duration of recordin in secs.
+
+.PARAMETER Filename
+Filename of output mp4 file.
+#>
+function Save-DeviceScreenRecord {
+    param (
+        [byte]$Duration = 5,
+
+        [ValidateNotNullOrEmpty()]
+        [string]$Filename = "record"
+    )
+
+    $OutFileName = Get-EncodedFilename $Filename '.mp4'
+    $DeviceFilePath = '/sdcard/record.mp4'
+    adb shell "screenrecord --time-limit $Duration $DeviceFilePath"
+    adb pull $DeviceFilePath $OutFileName
+    Write-Host "Saved $Duration sec(s) screen recording to '$OutFilename'"
+}
+
+<#
+.SYNOPSIS
+Start recording a perfetto trace.
+
+.PARAMETER Filename
+Trace filename on local machine.
+
+.PARAMETER Time
+Trace duration TIME[s|m|h]. If time is not set explicitly, it will keep recording until user presses Ctrl+C to cancel.
+
+.PARAMETER Buffer
+Ring buffer size [mb|gb] during recording.
+
+.PARAMETER ExtraAtraceCagetories
+Extra ATRACE categories to trace.
+
+.EXAMPLE
+Start-Perfetto -o foo.perfetto-trace
+
+.NOTES
+Record traces on Android: https://perfetto.dev/docs/quickstart/android-tracing (require Python installation)
+
+This function utilizes helper script from google.
+curl -O https://raw.githubusercontent.com/google/perfetto/master/tools/record_android_trace
+#>
+function Start-Perfetto {
+    param (
+        [string]$Filename,
+        [string]$Time,
+        [string]$Buffer = '32mb',
+        [string[]]$ExtraAtraceCagetories
+    )
+
+    $CmdArgs = New-Object System.Collections.ArrayList
+
+    if ($Time) {
+        $CmdArgs.Add("-t $Time") | Out-Null
+    }
+
+    if ($Filename) {
+        $OutFileName = Get-EncodedFilename $Filename '.perfetto-trace'
+        $CmdArgs.Add("-o $OutFileName") | Out-Null
+    }
+
+    $CmdArgs.Add("-b $Buffer") > $null
+
+    # For more tracing categories, please refer to
+    # https://android.googlesource.com/platform/frameworks/native/+/refs/tags/android-q-preview-5/cmds/atrace/atrace.cpp#100
+    # $AtraceCategory =  @('gfx', 'sched', 'freq', 'idle', 'load', 'am', 'wm', 'view', 'sync', 'hal', 'input', 'res', 'memory')
+    $AtraceCategory = 'gfx sched freq idle load am wm view sync hal input res memory'
+    $CmdArgs.Add($AtraceCategory) | Out-Null
+    $CmdArgs.Add($ExtraAtraceCagetories) | Out-Null
+
+    python "$PSScriptRoot\record_android_trace" $CmdArgs
+}
+
+function Start-AndroidProfiler { Start-Process "C:\Program Files\Android\Android Studio\bin\profiler.exe" }
+Set-Alias -Name ap -Value Start-AndroidProfiler
+
+# -----------------------------------------------------------------------------
+# Unreal utilities
+# -----------------------------------------------------------------------------
+<#
+.SYNOPSIS
+Execute Unreal console command via adb shell am broadcast.
+
+.EXAMPLE
+Invokde-UnrealCommand t.MaxFPS=60
+
+.NOTES
+#>
+function Invoke-UnrealCommand { adb shell "am broadcast -a android.intent.action.RUN -e cmd '$Args'" }
+Set-Alias -Name uecmd -Value Invoke-UnrealCommand
+
+<#
+.SYNOPSIS
+Start FPS chart data capture on device.
+
+.EXAMPLE
+An example
+
+.NOTES
+https://docs.unrealengine.com/4.27/en-US/TestingAndOptimization/PerformanceAndProfiling/Overview/#generateachartoveraperiodoftime
+#>
+function Start-UnrealFPSChart {
+    param (
+        [switch] $ClearLogcat
+    )
+
+    if ($ClearLogcat) { adb logcat -c }
+    uecmd StartFPSChart
+}
+
+<#
+.SYNOPSIS
+Stop FPS chart data capture on device.
+#>
+function Stop-UnrealFPSChart {
+    param (
+        [string] $OutputFolderPath = '.'
+    )
+    uecmd StopFPSChart
+
+    $Log = adb shell "logcat UE:D UE4:D *:S -d -e 'FPS Chart' | tail -1"
+    if (-not ($Log -match 'saved to (.+)')) {
+        Write-Warning "Can't find output FPS chart"
+        return
+    }
+
+    $DeviceOutFolderPath = (Split-Path $Matches.1).Replace('\', '/')
+    $FolderName = Split-Path -Leaf $DeviceOutFolderPath
+    New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
+    Write-Host "Pulling trace '$DeviceOutFolderPath'"
+    adb pull $DeviceOutFolderPath "$OutputFolderPath/$FolderName"
+}
+
+<#
+.SYNOPSIS
+Start a statistics capture.
+
+.NOTES
+https://docs.unrealengine.com/5.0/en-US/stat-commands-in-unreal-engine/
+#>
+function Start-UnrealStatFile {
+    uecmd stat StartFile
+}
+<#
+.SYNOPSIS
+Stop current statistics capture. Output file could be located at
+[Unreal Engine Project Directory][ProjectName]\Saved\Profiling\UnrealStats.
+#>
+function Stop-UnrealStatFile { uecmd stat StopFile }
+
+# https://docs.unrealengine.com/5.0/en-US/unreal-insights-reference-in-unreal-engine-5/
+function Start-UnrealInsight {
+    param (
+        [switch] $ClearLogcat,
+        [switch] $Memory
+    )
+
+    if ($ClearLogcat) { adb logcat -c }
+
+    if ($Memory) {
+        # It seems Memalloc, MemTag do not work on Android so far.
+        uecmd "Trace.File Default,MemAlloc,MemTag"
+    } else {
+        uecmd "Trace.File CPU,Frame,GPU,Bookmark,Log,Stats,RHICommands"
+    }
+    adb shell "logcat UE:D UE4:D *:S -d | grep utrace | tail -1"
+}
+
+function Stop-UnrealInsight {
+    param (
+        [switch] $PullToDefaultStore,
+        [string] $OutputFolderPath = '.'
+    )
+    uecmd Trace.stop
+    $Log = adb shell "logcat UE:D UE4:D *:S -d | grep utrace | tail -1"
+    if (-not ($Log -match '"(.+)"')) {
+        Write-Warning "Can't find output trace"
+        return
+    }
+
+    $DeviceOutFilePath = $Matches.1
+    if ($PullToDefaultStore) {
+        $OutputFolderPath = "$env:USERPROFILE/AppData/Local/UnrealEngine/Common/UnrealTrace/Store/001"
+    } else {
+        New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
+    }
+
+    Write-Host "Pulling trace '$DeviceOutFilePath' to $OutputFolderPath"
+    adb pull $DeviceOutFilePath $OutputFolderPath
+}
+
+function Show-UnrealLogcat {
+    param (
+        [switch] $LogProfilingDebugging
+    )
+
+    if ($LogProfilingDebugging) {
+        adb logcat UE:D UE4:D *:S -e LogProfilingDebugging -d $Args
+    } else {
+        adb logcat UE:D UE4:D *:S -d $Args
+    }
+}
+
+function Show-UnrealSynthBenchmark {
+    adb logcat -c
+    uecmd SynthBenchmark
+    adb logcat -v raw UE:D UE4:D *:S -e LogSynthBenchmark
+}
+
+function Export-UnrealCallStats {
+    param (
+        [single] $DurationInMs = 0.1,
+        [string] $Filename
+    )
+
+    adb logcat -c
+    # Dump call statistics to logcat.
+    uecmd stat DumpFrame -ms=$DurationInMs
+    if ($Filename) {
+        # Exclusively redirect UE debug info to file.
+        adb logcat -v raw UE:D UE4:D *:S -e LogStats -d > $Filename
+    } else {
+        adb logcat -v raw UE:D UE4:D *:S -e LogStats -d
+    }
+}
+
+function Switch-UnrealStats {
+    param (
+        [switch] $FPSUnit,
+        [switch] $SceneRendering,
+        [switch] $Game,
+        [switch] $InitViews,
+        [switch] $Threading,
+        [switch] $RHI,
+        [switch] $TaskGraphTasks,
+        [switch] $LightRendering,
+        [switch] $Physics
+    )
+
+    if ($FPSUnit) {
+        uecmd stat fps
+        uecmd stat unit
+    }
+
+    if ($SceneRendering) { uecmd stat SceneRendering }
+    if ($Game) { uecmd stat game }
+    if ($InitViews) { uecmd stat InitViews }
+    if ($Threading) { uecmd stat Threading }
+    if ($RHI) { uecmd stat RHI }
+    if ($TaskGraphTasks) { uecmd stat TaskGraphTasks }
+    if ($LightRendering) { uecmd stat LightRendering }
+    if ($Physics) { uecmd stat Physics }
+}
+
+# https://docs.unrealengine.com/4.26/en-US/TestingAndOptimization/PerformanceAndProfiling/Overview/#showflags
+function Show-UnrealRenderFeature {
+    [CmdletBinding()]
+    param (
+        [Alias("SSR")]
+        [switch] $ScreenSpaceReflections,
+        [Alias("AO")]
+        [switch] $AmbientOcclusion,
+        [Alias("AA")]
+        [switch] $AntiAliasing,
+        [switch] $Bloom,
+        [switch] $DeferredLighting,
+        [switch] $DynamicShadows,
+        [switch] $GlobalIllumination,
+        [Alias("PP")]
+        [switch] $PostProcessing,
+        [switch] $ReflectionEnvironment,
+        [switch] $Refraction,
+        [switch] $Translucency
+    )
+
+    $ParameterNames = $MyInvocation.BoundParameters.Keys
+    foreach ($Name in $ParameterNames) {
+        Write-Host "Enable rendering feature: $Name"
+        uecmd "showflag.$Name 1" | Out-Null
+    }
+}
+
+function Hide-UnrealRenderFeature {
+    [CmdletBinding()]
+    param (
+        [Alias("SSR")]
+        [switch] $ScreenSpaceReflections,
+        [Alias("AO")]
+        [switch] $AmbientOcclusion,
+        [Alias("AA")]
+        [switch] $AntiAliasing,
+        [switch] $Bloom,
+        [switch] $DeferredLighting,
+        [switch] $DynamicShadows,
+        [switch] $GlobalIllumination,
+        [Alias("PP")]
+        [switch] $PostProcessing,
+        [switch] $Translucency
+    )
+
+    $ParameterNames = $MyInvocation.BoundParameters.Keys
+    foreach ($Name in $ParameterNames) {
+        Write-Host "Disable rendering feature: $Name"
+        uecmd "showflag.$Name 0" | Out-Null
+    }
+}
+
+Set-Alias -Name uest -Value Switch-UnrealStats
+Set-Alias -Name uelog -Value Show-UnrealLogcat
+Set-Alias -Name ueshow -Value Show-UnrealRenderFeature
+Set-Alias -Name uehide -Value Hide-UnrealRenderFeature
