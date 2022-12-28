@@ -12,7 +12,7 @@
 RootModule = 'AdbGamePerf.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.1'
+ModuleVersion = '0.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -70,10 +70,13 @@ PowerShellVersion = '5.0'
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
+    'Import-AGPConfig',
     'Enter-AdbShell',
     'Save-DeviceScreenCap',
     'Save-DeviceScreenRecord',
-    'Start-Perfetto',
+    'Start-Perfetto', 'Start-AndroidProfiler',
+    'Start-StreamlineGator',
+    'Invoke-MaliOfflineCompiler',
     'Invoke-UnrealCommand',
     'Start-UnrealFPSChart', 'Stop-UnrealFPSChart',
     'Start-UnrealStatFile', 'Stop-UnrealStatFile',
@@ -90,7 +93,7 @@ CmdletsToExport = @()
 VariablesToExport = '*'
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('as', 'ap', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
+AliasesToExport = @('as', 'saap', 'sasg', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -99,7 +102,7 @@ AliasesToExport = @('as', 'ap', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
 # ModuleList = @()
 
 # List of all files packaged with this module
-FileList = @('record_android_trace')
+FileList = @('record_android_trace', 'shader_profile.py')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{

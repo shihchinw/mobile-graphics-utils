@@ -1,3 +1,54 @@
+# Default config settings.
+$Config = @{
+    AGP_ANDROID_PROFILER = 'C:\Program Files\Android\Android Studio\bin\profiler.exe'
+    AGP_MALI_MOBILE_STUDIO = 'C:\Program Files\Arm\Arm Mobile Studio 2022.4'
+}
+
+$ConfigFilepath = "$PSScriptRoot/config.json"
+
+function Import-AGPConfig {
+    if (-not (Test-Path $ConfigFilepath)) {
+        # Export default settings to config file.
+        $Config | ConvertTo-Json | Out-File $ConfigFilepath
+    } else {
+        $Config = Get-Content $ConfigFilepath -Raw | ConvertFrom-Json -AsHashtable
+    }
+
+    Write-Host $Config.Keys
+    foreach ($k in $Config.Keys) {
+        [Environment]::SetEnvironmentVariable($k, $Config[$k])
+    }
+}
+
+function Export-AGPConfig {
+    $Config | ConvertTo-Json | Out-File $ConfigFilepath
+}
+
+function Resolve-Filepath {
+    param (
+        [string]$Filepath,
+        [string]$VarName
+    )
+
+    $IsValid = Test-Path $Filepath
+
+    while (-not $IsValid) {
+        Write-Host "Invalid filepath: $Filepath"
+        $Filepath = Read-Host "Please specify a valid path for $VarName ('q' to escape)"
+
+        $IsValidPath = (Test-Path $Filepath)
+        if ($IsValidPath) {
+            [Environment]::SetEnvironmentVariable($VarName, $Filepath)
+            $Config[$VarName] = $Filepath
+            Export-AGPConfig
+        }
+
+        $IsValid = $IsValidPath -or ($Filepath -eq 'q')
+    }
+
+    return $Filepath.Replace('\', '/')
+}
+
 # -----------------------------------------------------------------------------
 # Basic Android helper commands
 # -----------------------------------------------------------------------------
@@ -118,8 +169,70 @@ function Start-Perfetto {
     python "$PSScriptRoot\record_android_trace" $CmdArgs
 }
 
-function Start-AndroidProfiler { Start-Process "C:\Program Files\Android\Android Studio\bin\profiler.exe" }
-Set-Alias -Name ap -Value Start-AndroidProfiler
+function Start-AndroidProfiler {
+    $ProfilerPath = Resolve-Filepath $Config.AGP_ANDROID_PROFILER 'AGP_ANDROID_PROFILER'
+    Start-Process $ProfilerPath
+}
+
+Set-Alias -Name saap -Value Start-AndroidProfiler
+
+# -----------------------------------------------------------------------------
+# Mali Mobile Studio
+# -----------------------------------------------------------------------------
+
+<#
+.SYNOPSIS
+Install streamline gator for following TCP connection.
+
+.DESCRIPTION
+By using TCP connection, we can start capturing counters in the middle of execution instead of start from APP launch.
+
+.LINK
+https://developer.arm.com/documentation/102718/0102/Streamline-can-not-access-my-device
+#>
+function Start-StreamlineGator {
+    $MobileStudioPath = Resolve-Filepath $Config.AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
+    $ScriptPath = "$MobileStudioPath/streamline/gator/gator_me.py"
+    python $ScriptPath --daemon "$MobileStudioPath/streamline/bin/android/arm64/gatord"
+}
+
+<#
+.SYNOPSIS
+Invoke Mali offline compiler to compile a folder of shaders and collect results in one csv.
+
+.PARAMETER ShaderFolder
+The folder of source shaders.
+
+.PARAMETER JobCount
+Max number of parallel compiling processes. (Not support for compiling of Vulkan shaders).
+
+.PARAMETER OutputFolderPath
+Folder path of the output report.
+
+.PARAMETER Vulkan
+Target the Vulkan API.
+
+.EXAMPLE
+Invoke-MaliOfflineCompiler -JobCount 6 shader_folder
+
+Compiling GLES shaders in shader_folder with 6 processes.
+#>
+function Invoke-MaliOfflineCompiler {
+    param (
+        [System.IO.FileInfo]$ShaderFolder,
+        [byte]$JobCount = 4,
+        [string]$OutputFolderPath = '.',
+        [switch]$Vulkan
+    )
+
+    if ($Vulkan) {
+        python "$PSScriptRoot/shader_profile.py" --vulkan -o $OutputFolderPath $ShaderFolder
+    } else {
+        python "$PSScriptRoot/shader_profile.py" -j $JobCount -o $OutputFolderPath $ShaderFolder
+    }
+}
+
+Set-Alias -Name sasg -Value Start-StreamlineGator
 
 # -----------------------------------------------------------------------------
 # Unreal utilities
@@ -129,9 +242,7 @@ Set-Alias -Name ap -Value Start-AndroidProfiler
 Execute Unreal console command via adb shell am broadcast.
 
 .EXAMPLE
-Invokde-UnrealCommand t.MaxFPS=60
-
-.NOTES
+Invoke-UnrealCommand t.MaxFPS=60
 #>
 function Invoke-UnrealCommand { adb shell "am broadcast -a android.intent.action.RUN -e cmd '$Args'" }
 Set-Alias -Name uecmd -Value Invoke-UnrealCommand
@@ -188,6 +299,7 @@ https://docs.unrealengine.com/5.0/en-US/stat-commands-in-unreal-engine/
 function Start-UnrealStatFile {
     uecmd stat StartFile
 }
+
 <#
 .SYNOPSIS
 Stop current statistics capture. Output file could be located at
