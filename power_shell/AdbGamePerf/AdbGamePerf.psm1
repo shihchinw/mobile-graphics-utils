@@ -49,6 +49,16 @@ function Resolve-Filepath {
     return $Filepath.Replace('\', '/')
 }
 
+function Get-FocusedPackageName {
+    $Log = adb shell "dumpsys activity activities | grep mFocusedApp"
+    if (-not ($Log -match "\w+([.]\w+)+")) {
+        Write-Warning "Can't find focused package"
+        return
+    }
+
+    return $Matches.0
+}
+
 # -----------------------------------------------------------------------------
 # Basic Android helper commands
 # -----------------------------------------------------------------------------
@@ -305,7 +315,35 @@ function Start-UnrealStatFile {
 Stop current statistics capture. Output file could be located at
 [Unreal Engine Project Directory][ProjectName]\Saved\Profiling\UnrealStats.
 #>
-function Stop-UnrealStatFile { uecmd stat StopFile }
+function Stop-UnrealStatFile {
+    param (
+        [string] $OutputFolderPath = '.'
+    )
+    uecmd stat StopFile
+
+    $PackageName = Get-FocusedPackageName
+    $Log = adb shell "logcat UE:D UE4:D *:S -d -e 'Wrote stats file' | tail -1"
+
+    if (-not ($Log -match '../../../((\w+)/(.+))$')) {
+        Write-Warning "Can't find output stats file"
+        return
+    }
+
+    $RelativePath = $Matches.1
+    if ($RelativePath.EndsWith('uestats')) {
+        $ParentFolderPath = "/sdcard/Android/data/$PackageName/files/UnrealGame"
+    } else {
+        $ParentFolderPath = "/sdcard/UE4Game"
+    }
+
+    $DeviceOutFolderPath = (Split-Path -Parent "$ParentFolderPath/$($Matches.2)/$RelativePath").Replace('\', '/')
+
+    $FolderName = Split-Path -Leaf $DeviceOutFolderPath
+    New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
+    Write-Host "Pulling trace '$DeviceOutFolderPath'"
+
+    adb pull $DeviceOutFolderPath "$OutputFolderPath/$FolderName"
+}
 
 # https://docs.unrealengine.com/5.0/en-US/unreal-insights-reference-in-unreal-engine-5/
 function Start-UnrealInsight {
