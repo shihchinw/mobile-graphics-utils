@@ -30,6 +30,8 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Command|Alias|Usage|
 |-|-|-|
 |Start-StreamlineGator|sasg|Install and launch gator for following TCP connection|
+|Enable-LightWeightInterceptor|lwi|Enable interceptor to add Streamline annotations|
+|Invoke-PerformanceAdvisor|ipa|Invoke Performance Advisor to generate report from Streamline capture|
 |Invoke-MaliOfflineCompiler||Invoke offline compiler to compile a folder of shaders|
 
 

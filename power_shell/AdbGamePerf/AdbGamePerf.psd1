@@ -12,7 +12,7 @@
 RootModule = 'AdbGamePerf.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.2'
+ModuleVersion = '0.3'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -76,6 +76,8 @@ FunctionsToExport = @(
     'Save-DeviceScreenRecord',
     'Start-Perfetto', 'Start-AndroidProfiler',
     'Start-StreamlineGator',
+    'Enable-LightWeightInterceptor',
+    'Invoke-PerformanceAdvisor',
     'Invoke-MaliOfflineCompiler',
     'Invoke-UnrealCommand',
     'Start-UnrealFPSChart', 'Stop-UnrealFPSChart',
@@ -93,7 +95,7 @@ CmdletsToExport = @()
 VariablesToExport = '*'
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('as', 'saap', 'sasg', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
+AliasesToExport = @('as', 'saap', 'sasg', 'ipa', 'lwi', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()

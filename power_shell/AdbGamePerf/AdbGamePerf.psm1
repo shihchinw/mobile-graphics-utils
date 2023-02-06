@@ -208,6 +208,61 @@ function Start-StreamlineGator {
 
 <#
 .SYNOPSIS
+Enable Light Weight Interceptor library (LWI) to add streamline annotations.
+
+.EXAMPLE
+Enable-LightWeightInterceptor
+
+Enable LWI for Vulkan and overwrite files to $env:TEMP/mali_lwi
+
+.EXAMPLE
+Enable-LightWeightInterceptor -h
+
+Show detailed flags of lwi_me.py in $MobileStudioPath/performance_advisor/bin/android/lwi_me.py
+
+.LINK
+https://developer.arm.com/documentation/102009/0102/Before-you-begin/Integrate-Performance-Advisor-with-your-application
+#>
+function Enable-LightWeightInterceptor {
+    param (
+        [switch]$GLES
+    )
+
+    $MobileStudioPath = Resolve-Filepath $Config.AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
+    $ScriptPath = "$MobileStudioPath/performance_advisor/bin/android/lwi_me.py"
+
+    if ($Args) {
+        python $ScriptPath $Args
+    } else {
+        $API = if ($GLES) { 'gles' } else { 'vulkan' }
+        python $ScriptPath --lwi-api $API --overwrite --lwi-out-dir "$env:TEMP/mali_lwi"
+    }
+}
+
+<#
+.SYNOPSIS
+Invoke Mali Performance Advisor.
+
+.EXAMPLE
+Invoke-PerformanceAdvisor -h
+
+Show help flags of Performance Advisor in Mali Mobile Studio.
+
+.EXAMPLE
+Invoke-PerformanceAdvisor foo.apc -t json
+
+Import Streamline capture foo.apc and generate output report.
+
+.LINK
+https://developer.arm.com/Tools%20and%20Software/Performance%20Advisor
+#>
+function Invoke-PerformanceAdvisor {
+    $MobileStudioPath = Resolve-Filepath $Config.AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
+    & "$MobileStudioPath/performance_advisor/pa.exe" $Args
+}
+
+<#
+.SYNOPSIS
 Invoke Mali offline compiler to compile a folder of shaders and collect results in one csv.
 
 .PARAMETER ShaderFolder
@@ -243,6 +298,8 @@ function Invoke-MaliOfflineCompiler {
 }
 
 Set-Alias -Name sasg -Value Start-StreamlineGator
+Set-Alias -Name lwi -Value Enable-LightWeightInterceptor
+Set-Alias -Name ipa -Value Invoke-PerformanceAdvisor
 
 # -----------------------------------------------------------------------------
 # Unreal utilities
