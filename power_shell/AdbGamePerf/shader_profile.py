@@ -4,6 +4,7 @@ from datetime import datetime
 import argparse
 import csv
 import functools
+import itertools
 import json
 import multiprocessing as mp
 import os
@@ -39,6 +40,15 @@ _FIELD_LABEL_MAP = {
     'has_stack_spilling': 'Stack Spilling',
     'stack_spill_bytes': 'Spill Bytes',
     'fp16_arithmetic': 'FP16 Arithmetic',
+    'ray_traversal_contexts': 'Ray Traversal Contexts',
+
+    'has_uniform_computation': 'Has uniform computation',
+    'has_side_effects': 'Has side-effects',
+    'modifies_coverage': 'Modifies coverage',
+    'uses_late_zs_test': 'Uses late ZS test',
+    'uses_late_zs_update': 'Uses late ZS update',
+    'reads_color_buffer': 'Reads color buffer',
+    'has_slow_ray_traversal': 'Has slow ray traversal',
     'error_log': 'Error'
 }
 
@@ -64,11 +74,20 @@ class ShaderCompileResult:
         self.has_stack_spilling = False
         self.stack_spill_bytes = 0
         self.fp16_arithmetic = 0
+        self.ray_traversal_contexts = 0
+
+        self.has_uniform_computation = False
+        self.has_side_effects = None
+        self.modifies_coverage = None
+        self.uses_late_zs_test = None
+        self.uses_late_zs_update = None
+        self.reads_color_buffer = None
+        self.has_slow_ray_traversal = None
+
         self.error_log = None
 
     def write_to_csv_dict(self, csv_writer):
         csv_writer.writerow(self.__dict__)
-
 
 def exec_malioc(filepath, target_vulkan):
     """Execute Mali offline compiler and return json format string."""
@@ -126,7 +145,7 @@ def write_compile_result_to_csv(shader_compile_result, csv_writer):
             bound_pipelines = [_FIELD_LABEL_MAP[x] for x in perf_result.bound_pipelines if x]
             result.shader_bounds = ','.join(bound_pipelines)
 
-            for idx, props in enumerate(shader_variant.properties):
+            for props in itertools.chain(shader_compile_result.properties, shader_variant.properties):
                 if props.name in _FIELD_LABEL_MAP:
                     setattr(result, props.name, props.value)
                 else:

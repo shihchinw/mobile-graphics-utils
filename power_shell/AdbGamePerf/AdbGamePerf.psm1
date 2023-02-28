@@ -1,7 +1,7 @@
 # Default config settings.
 $Config = @{
     AGP_ANDROID_PROFILER = 'C:\Program Files\Android\Android Studio\bin\profiler.exe'
-    AGP_MALI_MOBILE_STUDIO = 'C:\Program Files\Arm\Arm Mobile Studio 2022.4'
+    AGP_MALI_MOBILE_STUDIO = 'C:\Program Files\Arm\Arm Mobile Studio 2023.0'
 }
 
 $ConfigFilepath = "$PSScriptRoot/config.json"
