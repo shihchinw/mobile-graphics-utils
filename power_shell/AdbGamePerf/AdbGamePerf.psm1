@@ -180,7 +180,7 @@ function Start-Perfetto {
 }
 
 function Start-AndroidProfiler {
-    $ProfilerPath = Resolve-Filepath $Config.AGP_ANDROID_PROFILER 'AGP_ANDROID_PROFILER'
+    $ProfilerPath = Resolve-Filepath $env:AGP_ANDROID_PROFILER 'AGP_ANDROID_PROFILER'
     Start-Process $ProfilerPath
 }
 
@@ -201,7 +201,7 @@ By using TCP connection, we can start capturing counters in the middle of execut
 https://developer.arm.com/documentation/102718/0102/Streamline-can-not-access-my-device
 #>
 function Start-StreamlineGator {
-    $MobileStudioPath = Resolve-Filepath $Config.AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
+    $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
     $ScriptPath = "$MobileStudioPath/streamline/gator/gator_me.py"
     python $ScriptPath --daemon "$MobileStudioPath/streamline/bin/android/arm64/gatord"
 }
@@ -228,7 +228,7 @@ function Enable-LightWeightInterceptor {
         [switch]$GLES
     )
 
-    $MobileStudioPath = Resolve-Filepath $Config.AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
+    $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
     $ScriptPath = "$MobileStudioPath/performance_advisor/bin/android/lwi_me.py"
 
     if ($Args) {
@@ -257,7 +257,7 @@ Import Streamline capture foo.apc and generate output report.
 https://developer.arm.com/Tools%20and%20Software/Performance%20Advisor
 #>
 function Invoke-PerformanceAdvisor {
-    $MobileStudioPath = Resolve-Filepath $Config.AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
+    $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
     & "$MobileStudioPath/performance_advisor/pa.exe" $Args
 }
 
