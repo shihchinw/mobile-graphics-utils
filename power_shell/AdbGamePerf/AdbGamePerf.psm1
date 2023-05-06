@@ -72,6 +72,21 @@ function Get-FocusedPackageName {
     return $Matches.0
 }
 
+function Get-PackageNameList {
+    return (adb shell "pm list packages -3 | sort | sed 's/^package://'").split([System.Environment]::NewLine)
+}
+
+function Select-Package {
+    $PackageNames = Get-PackageNameList
+    $Index = 0
+    foreach ($Name in $PackageNames) { Write-Host ("{0, 2:N0} {1}" -f $Index, $Name); $Index++}
+
+    $SelectedIdx = Read-Host -Prompt "\nPlease choose app package (ctrl+c to abort):"
+    $SelectedPackageName = $PackageNames[$SelectedIdx]
+    Write-Host "Selected app: $SelectedPackageName"
+    return $SelectedPackageName
+}
+
 # -----------------------------------------------------------------------------
 # Basic Android helper commands
 # -----------------------------------------------------------------------------
