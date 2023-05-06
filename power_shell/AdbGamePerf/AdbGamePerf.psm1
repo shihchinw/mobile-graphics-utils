@@ -49,6 +49,19 @@ function Resolve-Filepath {
     return $Filepath.Replace('\', '/')
 }
 
+function Get-MobileStudioVersion {
+    param (
+        [string]$Filepath
+    )
+
+    $Name = Split-Path -Path $Filepath -Leaf
+    if ($Name -match 'Arm Mobile Studio (\d+\.\d)') {
+        return $Matches[1]
+    }
+
+    throw "Failed to get version string from '$Filepath'"
+}
+
 function Get-FocusedPackageName {
     $Log = adb shell "dumpsys activity activities | grep mFocusedApp"
     if (-not ($Log -match "\w+([.]\w+)+")) {
@@ -218,7 +231,7 @@ Enable LWI for Vulkan and overwrite files to $env:TEMP/mali_lwi
 .EXAMPLE
 Enable-LightWeightInterceptor -h
 
-Show detailed flags of lwi_me.py in $MobileStudioPath/performance_advisor/bin/android/lwi_me.py
+Show detailed flags of lwi_me.py in $MobileStudioPath/{performance_advisor|streamline}/bin/android/lwi_me.py
 
 .LINK
 https://developer.arm.com/documentation/102009/0102/Before-you-begin/Integrate-Performance-Advisor-with-your-application
@@ -229,7 +242,9 @@ function Enable-LightWeightInterceptor {
     )
 
     $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
-    $ScriptPath = "$MobileStudioPath/performance_advisor/bin/android/lwi_me.py"
+    $Version = Get-MobileStudioVersion $MobileStudioPath
+    $SubFolderName = if ($Version -ge '2023.1') { 'streamline' } else { 'performance_advisor' }
+    $ScriptPath = "$MobileStudioPath/$SubFolderName/bin/android/lwi_me.py"
 
     if ($Args) {
         python $ScriptPath $Args
@@ -258,7 +273,12 @@ https://developer.arm.com/Tools%20and%20Software/Performance%20Advisor
 #>
 function Invoke-PerformanceAdvisor {
     $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
-    & "$MobileStudioPath/performance_advisor/pa.exe" $Args
+    $Version = Get-MobileStudioVersion $MobileStudioPath
+    if ($Version -ge '2023.1') {
+        & "$MobileStudioPath/streamline/Streamline-cli.exe" -pa $Args
+    } else {
+        & "$MobileStudioPath/performance_advisor/pa.exe" $Args
+    }
 }
 
 <#
