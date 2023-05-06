@@ -83,6 +83,7 @@ FunctionsToExport = @(
     'Start-UnrealFPSChart', 'Stop-UnrealFPSChart',
     'Start-UnrealStatFile', 'Stop-UnrealStatFile',
     'Start-UnrealInsight', 'Stop-UnrealInsight',
+    'Save-UnrealGPUDump',
     'Show-UnrealLogcat', 'Export-UnrealCallStats',
     'Show-UnrealSynthBenchmark',
     'Show-UnrealRenderFeature', 'Hide-UnrealRenderFeature',
