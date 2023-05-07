@@ -19,10 +19,13 @@ For more details and examples of each command, please use `Get-Help` to get deta
 
 |Command|Alias|Usage|
 |-|-|-|
+|Get-FocusedPackageName||Get name of focused package|
+|Get-PackageNameList||Get names of installed packages on device|
 |Save-DeviceScreenCap||Save screen capture on device to local PC|
 |Save-DeviceScreenRecord||Save screen recording on device to local PC|
 |Start-Perfetto||Start capturing Perfetto trace|
 |Start-AndroidProfiler|saap|Launch installed Android profiler|
+|Watch-Logcat|wl|Watch logcat of specific application|
 
 
 ## Mali

@@ -72,7 +72,7 @@ PowerShellVersion = '5.0'
 FunctionsToExport = @(
     'Import-AGPConfig',
     'Get-FocusedPackageName', 'Get-PackageNameList',
-    'Enter-AdbShell',
+    'Enter-AdbShell', 'Watch-Logcat',
     'Save-DeviceScreenCap',
     'Save-DeviceScreenRecord',
     'Start-Perfetto', 'Start-AndroidProfiler',
@@ -97,7 +97,7 @@ CmdletsToExport = @()
 VariablesToExport = '*'
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('as', 'saap', 'sasg', 'ipa', 'lwi', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
+AliasesToExport = @('as', 'wl', 'saap', 'sasg', 'ipa', 'lwi', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()

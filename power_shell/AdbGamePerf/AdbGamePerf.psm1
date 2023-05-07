@@ -62,6 +62,14 @@ function Get-MobileStudioVersion {
     throw "Failed to get version string from '$Filepath'"
 }
 
+
+# -----------------------------------------------------------------------------
+# Basic Android helper commands
+# -----------------------------------------------------------------------------
+<#
+.SYNOPSIS
+Get name of active application in the foreground.
+#>
 function Get-FocusedPackageName {
     $Log = adb shell "dumpsys activity activities | grep mFocusedApp"
     if (-not ($Log -match "\w+([.]\w+)+")) {
@@ -72,26 +80,107 @@ function Get-FocusedPackageName {
     return $Matches.0
 }
 
+<#
+.SYNOPSIS
+Get installed package names on Android device.
+#>
 function Get-PackageNameList {
     return (adb shell "pm list packages -3 | sort | sed 's/^package://'").split([System.Environment]::NewLine)
 }
 
+<#
+.SYNOPSIS
+Select entity from prompted package name list.
+#>
 function Select-Package {
+    param (
+        [switch]$ShowResult
+    )
     $PackageNames = Get-PackageNameList
-    $Index = 0
-    foreach ($Name in $PackageNames) { Write-Host ("{0, 2:N0} {1}" -f $Index, $Name); $Index++}
+    $Index = 1
+    foreach ($Name in $PackageNames) { Write-Host ("{0, 2:N0}) {1}" -f $Index, $Name); $Index++}
+    Write-Host " 0) Exit"
 
-    $SelectedIdx = Read-Host -Prompt "\nPlease choose app package (ctrl+c to abort):"
-    $SelectedPackageName = $PackageNames[$SelectedIdx]
-    Write-Host "Selected app: $SelectedPackageName"
+    $SelectedIdx = Read-Host -Prompt "`nSelect entry"
+    if ($SelectedIdx -eq 0) {
+        return ''
+    }
+
+    $SelectedPackageName = $PackageNames[$SelectedIdx - 1]
+    if ($ShowResult) { Write-Host "Selected app: $SelectedPackageName" }
     return $SelectedPackageName
 }
 
-# -----------------------------------------------------------------------------
-# Basic Android helper commands
-# -----------------------------------------------------------------------------
 function Enter-AdbShell { adb shell "$Args" }
 Set-Alias -Name as -Value Enter-AdbShell
+
+<#
+.SYNOPSIS
+Watch logcat of specific application.
+
+.EXAMPLE
+Watch-Logcat -AppName ~
+
+Watch logcat of currently focused application.
+
+.EXAMPLE
+Watch-Logcat -AppName ?
+
+Select entity from installed packages first, then watch its logcat.
+
+.EXAMPLE
+Watch-Logcat -AppName com.foo.bar
+
+Watch logcat of com.foo.bar
+
+.EXAMPLE
+Watch-Logcat -AppName com.foo.bar -tag UE
+
+Watch logcat of com.foo.bar with specific tag 'UE'.
+#>
+function Watch-Logcat {
+    param(
+        [string]$AppName = '*',
+        [switch]$Clear,
+        [switch]$NoColor,
+        [string]$Tag
+    )
+
+    $CmdArgs = New-Object System.Collections.ArrayList
+    if ($Clear) {
+        $CmdArgs.Add("logcat -c |") | Out-Null
+    }
+    $CmdArgs.Add("logcat") | Out-Null
+
+    if ($AppName -eq '?') {
+        $AppName = Select-Package
+        if (-not $AppName) {
+            Write-Host "Abort logcat watching..."
+            return
+        }
+    } elseif ($AppName -eq '~') {
+        $AppName = Get-FocusedPackageName
+    }
+
+    if ($AppName -ne '*') {
+        if (-not ($AppName -match "\w+([.]\w+)+")) {
+            throw "Invalid format of package name: $AppName"
+        }
+
+        # Watch specific pid of given application name.
+        $AppPidStr = adb shell pidof $AppName
+        if (-not $AppPidStr) { throw "Can't find any running process of $AppName" }
+        $AppPid = ($AppPidStr).Split()[0]   # Get first returned pid
+        $CmdArgs.Add("--pid=$AppPid") | Out-Null
+    }
+
+    if (-not $NoColor) { $CmdArgs.Add("-v color") | Out-Null }
+    if ($Tag) { $CmdArgs.Add("$($Tag):D *:S") | Out-Null }
+
+    adb shell $CmdArgs
+}
+
+Set-Alias -Name wl -Value Watch-Logcat
 
 function Get-EncodedFilename {
     param (
@@ -352,9 +441,6 @@ Set-Alias -Name uecmd -Value Invoke-UnrealCommand
 <#
 .SYNOPSIS
 Start FPS chart data capture on device.
-
-.EXAMPLE
-An example
 
 .NOTES
 https://docs.unrealengine.com/4.27/en-US/TestingAndOptimization/PerformanceAndProfiling/Overview/#generateachartoveraperiodoftime
