@@ -319,8 +319,16 @@ https://developer.arm.com/documentation/102718/0102/Streamline-can-not-access-my
 #>
 function Start-StreamlineGator {
     $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
-    $ScriptPath = "$MobileStudioPath/streamline/gator/gator_me.py"
-    python $ScriptPath --daemon "$MobileStudioPath/streamline/bin/android/arm64/gatord"
+    $Version = Get-MobileStudioVersion $MobileStudioPath
+    if ($Version -ge '2023.2') {
+        adb root
+        adb push "$MobileStudioPath/streamline/bin/android/arm64/gatord" /data/local/tmp
+        adb shell 'chmod 777 /data/local/tmp/gatord'
+        adb shell '/data/local/tmp/gatord --system-wide=yes'
+    } else {
+        $ScriptPath = "$MobileStudioPath/streamline/gator/gator_me.py"
+        python $ScriptPath --daemon "$MobileStudioPath/streamline/bin/android/arm64/gatord"
+    }
 }
 
 <#
@@ -348,13 +356,19 @@ function Enable-LightWeightInterceptor {
     $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
     $Version = Get-MobileStudioVersion $MobileStudioPath
     $SubFolderName = if ($Version -ge '2023.1') { 'streamline' } else { 'performance_advisor' }
-    $ScriptPath = "$MobileStudioPath/$SubFolderName/bin/android/lwi_me.py"
+    $ScriptName = if ($Version -ge '2023.2') { 'streamline_me.py' } else { 'lwi_me.py' }
+    $ScriptPath = "$MobileStudioPath/$SubFolderName/bin/android/$ScriptName"
 
     if ($Args) {
         python $ScriptPath $Args
     } else {
         $API = if ($GLES) { 'gles' } else { 'vulkan' }
-        python $ScriptPath --lwi-api $API --overwrite --lwi-out-dir "$env:TEMP/mali_lwi"
+
+        if ($Version -ge '2023.2') {
+            python $ScriptPath --lwi-mode counters --lwi-api $API --overwrite --lwi-out-dir "$env:TEMP/mali_lwi"
+        } else {
+            python $ScriptPath --lwi-api $API --overwrite --lwi-out-dir "$env:TEMP/mali_lwi"
+        }
     }
 }
 
