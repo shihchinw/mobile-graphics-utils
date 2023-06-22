@@ -27,6 +27,8 @@ _FIELD_LABEL_MAP = {
     'shader_variant': 'Variant',
     'shader_exec_path': 'Exec Path',
 
+    'target_core': 'GPU Core',
+    'target_driver': 'Driver',
     'arith_fma': 'FMA',
     'arith_cvt': 'CVT',
     'arith_sfu': 'SFU',
@@ -51,13 +53,18 @@ _FIELD_LABEL_MAP = {
     'uses_late_zs_update': 'Uses late ZS update',
     'reads_color_buffer': 'Reads color buffer',
     'has_slow_ray_traversal': 'Has slow ray traversal',
+    'compiler_version': 'Compiler Version',
     'error_log': 'Error'
 }
 
 
 class ShaderCompileResult:
 
-    def __init__(self, filepath) -> None:
+    def __init__(self, core, driver, version, filepath) -> None:
+        self.target_core = core
+        self.target_driver = driver
+        self.compiler_version = version
+
         self.shader_name = os.path.basename(filepath)
         self.shader_id = 0
         self.shader_type = 'unknown'
@@ -97,19 +104,23 @@ class ShaderCompileResult:
     def write_to_csv_dict(self, csv_writer):
         csv_writer.writerow(self.__dict__)
 
-def exec_malioc(filepath, target_vulkan):
+def exec_malioc(filepath, target_gpu, target_vulkan):
     """Execute Mali offline compiler and return json format string."""
+
+    core_flag = f'-c {target_gpu}' if target_gpu else ''
 
     _, ext = os.path.splitext(filepath)
     if ext == '.spv':
-        cmd = f'malioc --spirv --format json "{filepath}"'
+        cmd = f'malioc {core_flag} --spirv --format json "{filepath}"'
     else:
         if ext not in _SHADER_TYPE_MAP:
             raise NotImplementedError(f'Not support shader type: {ext}')
 
         shader_type = _SHADER_TYPE_MAP[ext]
         vulkan_flag = '--vulkan' if target_vulkan else ''
-        cmd = f'malioc {vulkan_flag} --{shader_type} --format json "{filepath}"'
+        cmd = f'malioc {core_flag} {vulkan_flag} --{shader_type} --format json "{filepath}"'
+
+    success = True
 
     try:
         result = sp.check_output(cmd, stderr=sp.STDOUT).decode('utf-8')
@@ -117,14 +128,14 @@ def exec_malioc(filepath, target_vulkan):
         # The exit code would be non-zero when there are any shader compile errors.
         # Thus we have to return output from exception here.
         if e.returncode != 1:
-            raise e
+            success = False
 
         result = e.output.decode('utf-8')
 
-    return result
+    return (result, success)
 
 
-def write_compile_result_to_csv(shader_compile_result, csv_writer):
+def write_compile_result_to_csv(shader_compile_result, version, csv_writer):
     """Append compiler result to csv_writer.
 
     Args:
@@ -133,7 +144,8 @@ def write_compile_result_to_csv(shader_compile_result, csv_writer):
     """
 
     print(f'Processing {shader_compile_result.filename}')
-    result = ShaderCompileResult(shader_compile_result.filename)
+    core = shader_compile_result.hardware.core
+    result = ShaderCompileResult(core, shader_compile_result.driver, version, shader_compile_result.filename)
 
     # If it's failed to compile shader, we append the error messages at the end.
     if hasattr(shader_compile_result, 'errors'):
@@ -192,7 +204,7 @@ def custom_json_decoder(d):
     return namedtuple('CompileResult', d.keys())(*d.values())
 
 
-def generate_shader_profile(shader_folder, output_dir, process_count, target_vulkan, target_spirv):
+def generate_shader_profile(shader_folder, output_dir, process_count, target_gpu, target_vulkan, target_spirv):
 
     shader_file_list = _get_shader_files(shader_folder, target_spirv)
     if not shader_file_list:
@@ -205,7 +217,7 @@ def generate_shader_profile(shader_folder, output_dir, process_count, target_vul
     time_token = _get_time_token()
     report_csv_path = os.path.join(output_dir, f'malioc_report_{time_token}.csv')
 
-    compile_func = functools.partial(exec_malioc, target_vulkan=target_vulkan)
+    compile_func = functools.partial(exec_malioc, target_gpu=target_gpu, target_vulkan=target_vulkan)
     if target_vulkan and not target_spirv:
         print('malioc does not support multi-processes compilation, fall back to single process instead!')
         process_count = 1
@@ -215,12 +227,19 @@ def generate_shader_profile(shader_folder, output_dir, process_count, target_vul
         csv_writer.writerow(_FIELD_LABEL_MAP)
 
         with mp.Pool(process_count) as pool:
-            for output_str in pool.imap(compile_func, shader_file_list):
+            for output_str, success in pool.imap(compile_func, shader_file_list):
+                if not success:
+                    print(f'Error: {output_str}')
+                    break
+
                 result_json = json.loads(output_str, object_hook=custom_json_decoder)
                 # Since we invoke malioc for each shader file, thus the shaders array only contains one entity.
                 # We could directly pop the item in the shaders array.
+                compiler_version = '.'.join(map(str, result_json.producer.version))
+                build_hash = result_json.producer.build
+                offline_compiler_version = f'{compiler_version} ({build_hash})'
                 shader_compile_result = result_json.shaders.pop()
-                write_compile_result_to_csv(shader_compile_result, csv_writer)
+                write_compile_result_to_csv(shader_compile_result, offline_compiler_version, csv_writer)
 
 
 if __name__ == '__main__':
@@ -228,8 +247,9 @@ if __name__ == '__main__':
     parser.add_argument('shader_path', help='Directory of shader files')
     parser.add_argument('-j', '--job-count', type=int, default=4, help='Number of compiling jobs')
     parser.add_argument('-o', '--output', type=str, default='.', help='Output directory')
+    parser.add_argument('-c', '--core', type=str, default='', help='Target Mali GPU')
     parser.add_argument('--vulkan', action='store_true', help='Target the Vulkan API')
     parser.add_argument('--spirv', action='store_true', help='Compile SPIR-V binary module')
     args = parser.parse_args()
 
-    generate_shader_profile(args.shader_path, args.output, args.job_count, args.vulkan, args.spirv)
+    generate_shader_profile(args.shader_path, args.output, args.job_count, args.core, args.vulkan, args.spirv)

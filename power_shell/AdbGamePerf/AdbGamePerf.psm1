@@ -432,15 +432,17 @@ function Invoke-MaliOfflineCompiler {
         [byte]$JobCount = 4,
         [string]$OutputFolderPath = '.',
         [ValidateSet('SPIRV', 'VulkanGLSL', 'GLSL')]
-        [string]$Target
+        [string]$Target,
+        [ValidatePattern('(Mali|Immortalis)-\w+')]
+        [string]$Core = ''
     )
 
     if ($Target -eq 'SPIRV') {
-        python "$PSScriptRoot/shader_profile.py" --spirv -j $JobCount -o $OutputFolderPath $ShaderFolder
+        python "$PSScriptRoot/shader_profile.py" -c $Core --spirv -j $JobCount -o $OutputFolderPath $ShaderFolder
     } elseif ($Target -eq 'VulkanGLSL') {
-        python "$PSScriptRoot/shader_profile.py" --vulkan -o $OutputFolderPath $ShaderFolder
+        python "$PSScriptRoot/shader_profile.py" -c $Core --vulkan -o $OutputFolderPath $ShaderFolder
     } else {
-        python "$PSScriptRoot/shader_profile.py" -j $JobCount -o $OutputFolderPath $ShaderFolder
+        python "$PSScriptRoot/shader_profile.py" -c $Core -j $JobCount -o $OutputFolderPath $ShaderFolder
     }
 }
 
