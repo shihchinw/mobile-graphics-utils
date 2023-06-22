@@ -419,16 +419,25 @@ Target the Vulkan API.
 Invoke-MaliOfflineCompiler -JobCount 6 shader_folder
 
 Compiling GLES shaders in shader_folder with 6 processes.
+
+.EXAMPLE
+Invoke-MaliOfflineCompiler -Target SPIRV -JobCount 6 shader_folder
+
+Compile SPIR-V binary shaders in shader_folder with 6 processes. Each shader's file extension should be as
+(.vert|.frag|.comp).spv
 #>
 function Invoke-MaliOfflineCompiler {
     param (
         [System.IO.FileInfo]$ShaderFolder,
         [byte]$JobCount = 4,
         [string]$OutputFolderPath = '.',
-        [switch]$Vulkan
+        [ValidateSet('SPIRV', 'VulkanGLSL', 'GLSL')]
+        [string]$Target
     )
 
-    if ($Vulkan) {
+    if ($Target -eq 'SPIRV') {
+        python "$PSScriptRoot/shader_profile.py" --spirv -j $JobCount -o $OutputFolderPath $ShaderFolder
+    } elseif ($Target -eq 'VulkanGLSL') {
         python "$PSScriptRoot/shader_profile.py" --vulkan -o $OutputFolderPath $ShaderFolder
     } else {
         python "$PSScriptRoot/shader_profile.py" -j $JobCount -o $OutputFolderPath $ShaderFolder

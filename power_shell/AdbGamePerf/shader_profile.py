@@ -8,6 +8,7 @@ import itertools
 import json
 import multiprocessing as mp
 import os
+import re
 import subprocess as sp
 
 
@@ -21,6 +22,7 @@ _SHADER_EXEC_PATHS = ['total_cycles', 'longest_path_cycles', 'shortest_path_cycl
 
 _FIELD_LABEL_MAP = {
     'shader_name': 'Name',
+    'shader_id': 'Id',
     'shader_type': 'Type',
     'shader_variant': 'Variant',
     'shader_exec_path': 'Exec Path',
@@ -56,10 +58,16 @@ _FIELD_LABEL_MAP = {
 class ShaderCompileResult:
 
     def __init__(self, filepath) -> None:
-        _, ext = os.path.splitext(filepath)
-
         self.shader_name = os.path.basename(filepath)
-        self.shader_type = _SHADER_TYPE_MAP[ext]
+        self.shader_id = 0
+        self.shader_type = 'unknown'
+
+        match_obj = re.match('\w+-(?P<shader_id>\d+)(?P<shader_type>.vert|.frag|.comp)(.spv)?$', self.shader_name)
+        if match_obj:
+            self.shader_id = match_obj.group('shader_id')
+            ext = match_obj.group('shader_type')
+            self.shader_type = _SHADER_TYPE_MAP[ext]
+
         self.shader_variant = 'N/A'
         self.shader_exec_path = 'unknown'
         self.arith_fma = 0
@@ -93,12 +101,15 @@ def exec_malioc(filepath, target_vulkan):
     """Execute Mali offline compiler and return json format string."""
 
     _, ext = os.path.splitext(filepath)
-    if ext not in _SHADER_TYPE_MAP:
-        raise NotImplementedError(f'Not support shader type: {ext}')
+    if ext == '.spv':
+        cmd = f'malioc --spirv --format json "{filepath}"'
+    else:
+        if ext not in _SHADER_TYPE_MAP:
+            raise NotImplementedError(f'Not support shader type: {ext}')
 
-    shader_type = _SHADER_TYPE_MAP[ext]
-    vulkan_flag = '--vulkan' if target_vulkan else ''
-    cmd = f'malioc {vulkan_flag} --{shader_type} --format json "{filepath}"'
+        shader_type = _SHADER_TYPE_MAP[ext]
+        vulkan_flag = '--vulkan' if target_vulkan else ''
+        cmd = f'malioc {vulkan_flag} --{shader_type} --format json "{filepath}"'
 
     try:
         result = sp.check_output(cmd, stderr=sp.STDOUT).decode('utf-8')
@@ -155,7 +166,7 @@ def write_compile_result_to_csv(shader_compile_result, csv_writer):
                 result.write_to_csv_dict(csv_writer)
 
 
-def _get_shader_files(folder):
+def _get_shader_files(folder, target_spirv):
     result = []
 
     for filename in os.listdir(folder):
@@ -164,7 +175,10 @@ def _get_shader_files(folder):
             continue
 
         _, ext = os.path.splitext(filename)
-        if ext in _SHADER_TYPE_MAP:
+        if target_spirv:
+            if ext == '.spv':
+                result.append(filepath)
+        elif ext in _SHADER_TYPE_MAP:
             result.append(filepath)
 
     return result
@@ -178,9 +192,9 @@ def custom_json_decoder(d):
     return namedtuple('CompileResult', d.keys())(*d.values())
 
 
-def generate_shader_profile(shader_folder, output_dir, process_count, target_vulkan):
+def generate_shader_profile(shader_folder, output_dir, process_count, target_vulkan, target_spirv):
 
-    shader_file_list = _get_shader_files(shader_folder)
+    shader_file_list = _get_shader_files(shader_folder, target_spirv)
     if not shader_file_list:
         print(f'Can not find any shaders in {shader_folder}')
         return
@@ -192,7 +206,7 @@ def generate_shader_profile(shader_folder, output_dir, process_count, target_vul
     report_csv_path = os.path.join(output_dir, f'malioc_report_{time_token}.csv')
 
     compile_func = functools.partial(exec_malioc, target_vulkan=target_vulkan)
-    if target_vulkan:
+    if target_vulkan and not target_spirv:
         print('malioc does not support multi-processes compilation, fall back to single process instead!')
         process_count = 1
 
@@ -215,6 +229,7 @@ if __name__ == '__main__':
     parser.add_argument('-j', '--job-count', type=int, default=4, help='Number of compiling jobs')
     parser.add_argument('-o', '--output', type=str, default='.', help='Output directory')
     parser.add_argument('--vulkan', action='store_true', help='Target the Vulkan API')
+    parser.add_argument('--spirv', action='store_true', help='Compile SPIR-V binary module')
     args = parser.parse_args()
 
-    generate_shader_profile(args.shader_path, args.output, args.job_count, args.vulkan)
+    generate_shader_profile(args.shader_path, args.output, args.job_count, args.vulkan, args.spirv)
