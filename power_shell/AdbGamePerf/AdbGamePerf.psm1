@@ -660,13 +660,20 @@ function Switch-UnrealStats {
         [switch] $Threading,
         [switch] $RHI,
         [switch] $TaskGraphTasks,
+        [switch] $Memory,
         [switch] $LightRendering,
+        [switch] $Anim,
         [switch] $Physics
     )
 
     if ($FPSUnit) {
         uecmd stat fps
         uecmd stat unit
+    }
+
+    if ($Memory) {
+        uecmd stat Memory
+        uecmd stat MemoryPlatform
     }
 
     if ($SceneRendering) { uecmd stat SceneRendering }
@@ -676,6 +683,7 @@ function Switch-UnrealStats {
     if ($RHI) { uecmd stat RHI }
     if ($TaskGraphTasks) { uecmd stat TaskGraphTasks }
     if ($LightRendering) { uecmd stat LightRendering }
+    if ($Anim) { uecmd stat Anim }
     if ($Physics) { uecmd stat Physics }
 }
 
