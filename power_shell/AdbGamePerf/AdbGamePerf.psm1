@@ -663,16 +663,18 @@ function Switch-UnrealStats {
         [switch] $Memory,
         [switch] $LightRendering,
         [switch] $Anim,
-        [switch] $Physics
+        [switch] $Physics,
+        [ValidateSet($null, $true, $false)]
+        [object] $Serialization
     )
 
     if ($FPSUnit) {
-        uecmd stat fps
+        uecmd stat fps | Out-Null
         uecmd stat unit
     }
 
     if ($Memory) {
-        uecmd stat Memory
+        uecmd stat Memory | Out-Null
         uecmd stat MemoryPlatform
     }
 
@@ -685,6 +687,14 @@ function Switch-UnrealStats {
     if ($LightRendering) { uecmd stat LightRendering }
     if ($Anim) { uecmd stat Anim }
     if ($Physics) { uecmd stat Physics }
+
+    if ($null -ne $Serialization) {
+        [int]$EnableSerialization = [int][bool]::Parse($Serialization)
+        uecmd r.Vulkan.UploadCmdBufferSemaphore $EnableSerialization | Out-Null
+        uecmd r.Vulkan.SubmitAfterEveryEndRenderPass $EnableSerialization | Out-Null
+        uecmd r.Vulkan.SubmitOnDispatch $EnableSerialization | Out-Null
+        uecmd r.Vulkan.WaitforIdleOnSubmit $EnableSerialization
+    }
 }
 
 # https://docs.unrealengine.com/4.26/en-US/TestingAndOptimization/PerformanceAndProfiling/Overview/#showflags
