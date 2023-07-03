@@ -73,6 +73,7 @@ FunctionsToExport = @(
     'Import-AGPConfig',
     'Get-FocusedPackageName', 'Get-PackageNameList',
     'Enter-AdbShell', 'Watch-Logcat',
+    'Show-MemoryInfo', 'Watch-MemoryInfo',
     'Save-DeviceScreenCap',
     'Save-DeviceScreenRecord',
     'Start-Perfetto', 'Start-AndroidProfiler',

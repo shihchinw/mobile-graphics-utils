@@ -26,6 +26,8 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Start-Perfetto||Start capturing Perfetto trace|
 |Start-AndroidProfiler|saap|Launch installed Android profiler|
 |Watch-Logcat|wl|Watch logcat of specific application|
+|Show-MemoryInfo||Show memory info of focused package or whole system|
+|Watch-MemoryInfo||Watch certain type of memory info from focused application|
 
 
 ## Mali

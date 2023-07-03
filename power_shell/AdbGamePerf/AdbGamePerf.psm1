@@ -182,6 +182,62 @@ function Watch-Logcat {
 
 Set-Alias -Name wl -Value Watch-Logcat
 
+<#
+.SYNOPSIS
+Show memory info for focused package or whole system.
+
+.PARAMETER Detailed
+Show detailed memory report from whole system.
+#>
+function Show-MemoryInfo {
+    param(
+        [switch] $Detailed
+    )
+
+    if ($Detailed) {
+        adb shell dumpsys meminfo
+    } else {
+        $AppName = Get-FocusedPackageName
+        adb shell dumpsys meminfo $AppName
+    }
+}
+
+<#
+.SYNOPSIS
+Watch memory info of focused package.
+
+.PARAMETER Type
+Monitor type of meminfo (Graphics|GL|Heap|mmap).
+
+.PARAMETER Interval
+Update interval (in seconds).
+
+.EXAMPLE
+Watch-MemoryInfo -Type GL -Interval 0.5
+
+Watch EGL & GL memory for active package every 0.5 sec.
+#>
+function Watch-MemoryInfo {
+    param(
+        [ValidateSet('Graphics', 'GL', 'Heap', 'mmap')]
+        [string] $Type = 'GL',
+        [float] $Interval = 0.5
+    )
+
+    $AppName = Get-FocusedPackageName
+    Write-Host "Watch memory of [$AppName]"
+    Write-Host "                       Pss(KB)                        Rss(KB)"
+    Write-Host "                        ------                         ------"
+
+    while ($true) {
+        adb shell "dumpsys meminfo $AppName | grep $Type"
+        Start-Sleep $Interval
+        if ($Type -ne 'Graphics') {
+            Write-Host "                        ------                         ------"
+        }
+    }
+}
+
 function Get-EncodedFilename {
     param (
         [Parameter(Mandatory)]
