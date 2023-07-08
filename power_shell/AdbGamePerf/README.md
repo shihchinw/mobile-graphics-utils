@@ -23,6 +23,8 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Get-PackageNameList||Get names of installed packages on device|
 |Save-DeviceScreenCap||Save screen capture on device to local PC|
 |Save-DeviceScreenRecord||Save screen recording on device to local PC|
+|Start-DeviceApp||Start application on device|
+|Stop-DeviceApp||Stop application on device|
 |Start-Perfetto||Start capturing Perfetto trace|
 |Start-AndroidProfiler|saap|Launch installed Android profiler|
 |Watch-Logcat|wl|Watch logcat of specific application|
@@ -35,6 +37,7 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Command|Alias|Usage|
 |-|-|-|
 |Start-StreamlineGator|sasg|Install and launch gator for following TCP connection|
+|Save-StreamlineCapture|svsc|Save Streamline profile via headless capturing|
 |Enable-LightWeightInterceptor|lwi|Enable interceptor to add Streamline annotations|
 |Invoke-PerformanceAdvisor|ipa|Invoke Performance Advisor to generate report from Streamline capture|
 |Invoke-MaliOfflineCompiler||Invoke offline compiler to compile a folder of shaders|

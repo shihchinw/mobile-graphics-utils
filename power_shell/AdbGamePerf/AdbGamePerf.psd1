@@ -76,11 +76,13 @@ FunctionsToExport = @(
     'Show-MemoryInfo', 'Watch-MemoryInfo',
     'Save-DeviceScreenCap',
     'Save-DeviceScreenRecord',
+    'Start-DeviceApp', 'Stop-DeviceApp',
     'Start-Perfetto', 'Start-AndroidProfiler',
     'Start-StreamlineGator',
     'Enable-LightWeightInterceptor',
     'Invoke-PerformanceAdvisor',
     'Invoke-MaliOfflineCompiler',
+    'Save-StreamlineCapture',
     'Invoke-UnrealCommand',
     'Start-UnrealFPSChart', 'Stop-UnrealFPSChart',
     'Start-UnrealStatFile', 'Stop-UnrealStatFile',
@@ -98,7 +100,7 @@ CmdletsToExport = @()
 VariablesToExport = '*'
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('as', 'wl', 'saap', 'sasg', 'ipa', 'lwi', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
+AliasesToExport = @('as', 'wl', 'saap', 'sasg', 'svsc', 'ipa', 'lwi', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()

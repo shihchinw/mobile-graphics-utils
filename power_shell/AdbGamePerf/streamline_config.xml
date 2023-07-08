@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurations revision="3">
+	<configuration counter="ARM_Mali-G715_TEX_MSGO_NUM_FLITS"/>
+	<configuration counter="ARM_Mali-G715_ITER_COMP_ACTIVE"/>
+	<configuration counter="ARM_Mali-G715_LS_MEM_WRITE_FULL"/>
+	<configuration counter="ARM_Mali-G715_GPU_IRQ_ACTIVE"/>
+	<configuration counter="ARM_Mali-G715_COMPUTE_WARPS"/>
+	<configuration counter="ARMv8_Cortex_A510_user" cores="1"/>
+	<configuration counter="ARM_Mali-G715_FRAG_SHADER_THREADS"/>
+	<configuration counter="ARM_Mali-G715_PRIM_VISIBLE"/>
+	<configuration counter="ARM_Mali-G715_BEATS_RD_LSC_EXT"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_BOX_BIN_1_4"/>
+	<configuration counter="ARM_Mali-G715_FRAG_PTILES"/>
+	<configuration counter="ARM_Mali-G715_FRAG_QUADS_COARSE"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_TRI_BIN_1_4"/>
+	<configuration counter="ARMv9_Cortex_A715_system" cores="1"/>
+	<configuration counter="ARM_Mali-G715_GPU_ACTIVE"/>
+	<configuration counter="ARM_Mali-G715_RT_OPAQUE_HIT"/>
+	<configuration counter="ARM_Mali-G715_BEATS_WR_LSC_OTHER"/>
+	<configuration counter="ARM_Mali-G715_IDVS_VAR_SHAD_REQ"/>
+	<configuration counter="ARM_Mali-G715_TEX_MSGI_NUM_FLITS"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_W_STALL"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_RRESP_256_319"/>
+	<configuration counter="ARM_Mali-G715_LS_MEM_WRITE_SHORT"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_READ_BEATS"/>
+	<configuration counter="ARM_Mali-G715_EXEC_INSTR_NARROW"/>
+	<configuration counter="ARM_Mali-G715_EXEC_INSTR_DIVERGED"/>
+	<configuration counter="ARM_Mali-G715_CALL_BLEND_SHADER"/>
+	<configuration counter="ARM_Mali-G715_EXEC_INSTR_CVT"/>
+	<configuration counter="ARM_Mali-G715_PRIM_FACE_CULLED"/>
+	<configuration counter="ARM_Mali-G715_FRAG_LZS_KILL"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_BOX_ISSUED"/>
+	<configuration counter="ARM_Mali-G715_EXEC_INSTR_SFU"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_RRESP_192_255"/>
+	<configuration counter="ARM_Mali-G715_LS_MEM_READ_FULL"/>
+	<configuration counter="ARM_Mali-G715_LS_MEM_READ_SHORT"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_TRI_BIN_5_8"/>
+	<configuration counter="ARMv8_Cortex_A510_ccnt" event="0x11"/>
+	<configuration counter="ARM_Mali-G715_ITER_COMP_READY_BLOCKED"/>
+	<configuration counter="ARM_Mali-G715_BEATS_RD_FTC"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_BOX_BIN_9_12"/>
+	<configuration counter="ARM_Mali-G715_COMPUTE_ACTIVE"/>
+	<configuration counter="ARM_Mali-G715_RT_TERM_FIRST_HIT"/>
+	<configuration counter="ARMv9_Cortex_A715_ccnt" event="0x11"/>
+	<configuration counter="ARM_Mali-G715_RT_MISS"/>
+	<configuration counter="ARM_Mali-G715_VARY_SLOT_32"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_TRI_ISSUED"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_TRI_BIN_13_16"/>
+	<configuration counter="ARM_Mali-G715_EXEC_INSTR_FMA"/>
+	<configuration counter="ARM_Mali-G715_FRAG_QUADS_RAST"/>
+	<configuration counter="ARM_Mali-G715_FRAG_LZS_TEST"/>
+	<configuration counter="ARM_Mali-G715_FRAG_PARTIAL_QUADS_RAST"/>
+	<configuration counter="MaliTimeline_Perfetto"/>
+	<configuration counter="ARM_Mali-G715_TEX_MSGO_NUM_MSG"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_TRI_BIN_9_12"/>
+	<configuration counter="ARM_Mali-G715_PRIM_SAMPLE_CULLED"/>
+	<configuration counter="ARM_Mali-G715_FRAG_ACTIVE"/>
+	<configuration counter="ARM_Mali-G715_EXEC_CORE_ACTIVE"/>
+	<configuration counter="ARMv9_Cortex_X3_system" cores="1"/>
+	<configuration counter="ARM_Mali-G715_FULL_QUAD_WARPS"/>
+	<configuration counter="ARM_Mali-G715_IDVS_POS_SHAD_REQ"/>
+	<configuration counter="ARM_Mali-G715_BEATS_RD_TEX"/>
+	<configuration counter="ARMv9_Cortex_X3_user" cores="1"/>
+	<configuration counter="ARM_Mali-G715_FRAG_FPK_ACTIVE"/>
+	<configuration counter="ARM_Mali-G715_FRAG_QUADS_EZS_UPDATE"/>
+	<configuration counter="ARM_Mali-G715_VARY_SLOT_16"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_RRESP_320_383"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_AR_STALL"/>
+	<configuration counter="ARM_Mali-G715_QUAD_FPK_KILLER"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_WRITE_BEATS"/>
+	<configuration counter="ARM_Mali-G715_PRIM_FRUSTUM_CULLED"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_RRESP_0_127"/>
+	<configuration counter="ARM_Mali-G715_BEATS_RD_LSC"/>
+	<configuration counter="ARM_Mali-G715_FRAG_QUADS_EZS_KILL"/>
+	<configuration counter="ARM_Mali-G715_FRAG_TRANS_ELIM"/>
+	<configuration counter="ARM_Mali-G715_BEATS_WR_LSC_WB"/>
+	<configuration counter="ARM_Mali-G715_FRAG_QUADS_EZS_TEST"/>
+	<configuration counter="ARM_Mali-G715_RT_RAYS_STARTED"/>
+	<configuration counter="ARM_Mali-G715_LS_MEM_ATOMIC"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_BOX_BIN_5_8"/>
+	<configuration counter="Android_ThermalState" cores="1"/>
+	<configuration counter="ARM_Mali-G715_SHADER_CORE_ACTIVE"/>
+	<configuration counter="ARM_Mali-G715_BEATS_RD_FTC_EXT"/>
+	<configuration counter="ARMv8_Cortex_A510_system" cores="1"/>
+	<configuration counter="ARM_Mali-G715_L2_EXT_RRESP_128_191"/>
+	<configuration counter="ARM_Mali-G715_BEATS_RD_TEX_EXT"/>
+	<configuration counter="ARM_Mali-G715_FRAG_WARPS"/>
+	<configuration counter="ARM_Mali-G715_ITER_FRAG_TASK_COMPLETED"/>
+	<configuration counter="ARM_Mali-G715_RT_NON_OPAQUE_HIT"/>
+	<configuration counter="ARMv9_Cortex_A715_user" cores="1"/>
+	<configuration counter="ARM_Mali-G715_WARP_REG_SIZE_64"/>
+	<configuration counter="ARM_Mali-G715_TEX_FILT_NUM_OPERATIONS"/>
+	<configuration counter="ARM_Mali-G715_RT_RAY_BOX_BIN_13_16"/>
+	<configuration counter="ARMv9_Cortex_X3_ccnt" event="0x11"/>
+	<configuration counter="ARM_Mali-G715_BEATS_WR_TIB"/>
+</configurations>

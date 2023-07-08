@@ -111,6 +111,93 @@ function Select-Package {
     return $SelectedPackageName
 }
 
+<#
+.DESCRIPTION
+Resolve application by following alias:
+ ~ Focused application (i.e. foregraound activity).
+ ? Select application name from package list.
+ ! Last selected application name.
+
+.PARAMETER AppName
+Input application name.
+
+.PARAMETER AbortMessage
+Print message when aborting application selection.
+#>
+function Resolve-AppName {
+    param(
+        [string] $AppName,
+        [string] $AbortMessage
+    )
+
+    if ($AppName -eq '~') {
+        return Get-FocusedPackageName
+    }
+
+    if ($AppName -eq '!') {
+        $AppName = $env:AGP_LAST_APPNAME
+        if (-not $AppName) {
+            $AppName = '?'
+        }
+    }
+
+    if ($AppName -eq '?') {
+        $AppName = Select-Package
+        if (-not $AppName) {
+            Write-Host $AbortMessage
+            return ''
+        }
+    }
+
+    return $AppName
+}
+
+function Save-AppName {
+    param(
+        [string] $AppName
+    )
+
+    [Environment]::SetEnvironmentVariable('AGP_LAST_APPNAME', $AppName)
+}
+
+function Start-DeviceApp {
+    param(
+        [string] $AppName = '?',
+        [switch] $WaitForLaunch
+    )
+
+    $AppName = Resolve-AppName $AppName "Abort starting application."
+    if (-not $AppName) {
+        return
+    }
+
+    adb shell "monkey -p $AppName -c android.intent.category.LAUNCHER 1" | Out-Null
+    Save-AppName $AppName
+
+    if ($WaitForLaunch) {
+        # Pipe to Out-Null for waiting adb finishing its work.
+        adb shell "while [ ! `"`$(pidof $AppName)`" ]; do (sleep 1); done" | Out-Null
+    }
+}
+
+function Stop-DeviceApp {
+    param(
+        [string] $AppName = '~',
+        [switch] $WaitForExit
+    )
+
+    $AppName = Resolve-AppName $AppName "Abort stopping application."
+    if (-not $AppName) {
+        return
+    }
+
+    adb shell am force-stop $AppName
+    if ($WaitForExit) {
+        # Pipe to Out-Null for waiting adb finishing its work.
+        adb shell "while [ `"`$(pidof $AppName)`" ]; do (sleep 1); done" | Out-Null
+    }
+}
+
 function Enter-AdbShell { adb shell "$Args" }
 Set-Alias -Name as -Value Enter-AdbShell
 
@@ -502,7 +589,87 @@ function Invoke-MaliOfflineCompiler {
     }
 }
 
+<#
+.SYNOPSIS
+Save Streamline profile (*.apc.zip) via headless capturing and return output file path.
+
+.PARAMETER AppName
+Target application name. Support name alias ? (from selection), ! (last selected app), ~ (focused app).
+
+.PARAMETER GLES
+If using GLES API.
+
+.PARAMETER Config
+Counter configuration file.
+
+.PARAMETER OutputName
+Output capture name.
+
+.PARAMETER OutputFolderPath
+Output folder path.
+
+.PARAMETER Duration
+Duration of capturing in seconds.
+
+.EXAMPLE
+Save-Save-StreamlineCapture -AppName ? -Config config.xml
+#>
+function Save-StreamlineCapture {
+    param(
+        [string] $AppName = '?',
+        [switch] $GLES,
+        [string] $Config,
+        [string] $OutputName,
+        [string] $OutputFolderPath = '.',
+        [UInt16] $Duration = 10
+    )
+
+    $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
+    $Version = Get-MobileStudioVersion $MobileStudioPath
+    if ($Version -lt '2023.2') {
+        throw "Not support for older version of Streamline: $Version. Please update to Mobile Studio 2023.2."
+    }
+
+    $ScriptPath = "$MobileStudioPath/streamline/bin/android/streamline_me.py"
+    $API = if ($GLES) { 'gles' } else { 'vulkan' }
+    $GatordPath = "$MobileStudioPath/streamline/bin/android/arm64/gatord"
+
+    $AppName = Resolve-AppName $AppName 'Abort Streamline capturing...'
+    if (-not $AppName) {
+        return
+    }
+
+    Stop-DeviceApp $AppName
+
+    if (-not $OutputName) {
+        $OutputName = $AppName
+    }
+
+    if (-not $Config) {
+        $Config = "$PSScriptRoot/streamline_config.xml"
+    }
+
+    $OutputFileName = Get-EncodedFilename $OutputName
+    $OutputFilePath = "$OutputFolderPath/$OutputFileName.apc.zip"
+    $LwiOutDir = "$OutputFolderPath/lwi-out-$OutputFileName"
+    $ProcArgs = "`"$ScriptPath`" --lwi-mode counters --lwi-api $API --package $AppName --headless $OutputFilePath --daemon `"$GatordPath`" --config $Config --lwi-out-dir $LwiOutDir"
+    $StreamlineProc = Start-Process -FilePath python -ArgumentList $ProcArgs -WorkingDirectory . -PassThru -RedirectStandardError StreamlineCaptureStdErr.log
+
+    Start-Sleep 10  # Wait for launch of Streamline
+
+    Write-Host "Start $AppName"
+    Start-DeviceApp $AppName -WaitForLaunch
+    Write-Host "$AppName has been launched"
+
+    Start-Sleep $Duration
+    Stop-DeviceApp $AppName -WaitForExit
+    $StreamlineProc.Close()
+    Write-Host "Close $AppName"
+    return $OutputFilePath
+}
+
 Set-Alias -Name sasg -Value Start-StreamlineGator
+Set-Alias -Name svsc -Value Save-StreamlineCapture
 Set-Alias -Name lwi -Value Enable-LightWeightInterceptor
 Set-Alias -Name ipa -Value Invoke-PerformanceAdvisor
 
