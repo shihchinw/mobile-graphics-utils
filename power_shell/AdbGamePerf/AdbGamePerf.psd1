@@ -76,7 +76,7 @@ FunctionsToExport = @(
     'Show-MemoryInfo', 'Watch-MemoryInfo',
     'Save-DeviceScreenCap',
     'Save-DeviceScreenRecord',
-    'Start-DeviceApp', 'Stop-DeviceApp',
+    'Start-DeviceApp', 'Stop-DeviceApp', 'Wait-DeviceApp',
     'Start-Perfetto', 'Start-AndroidProfiler',
     'Start-StreamlineGator',
     'Enable-LightWeightInterceptor',

@@ -25,6 +25,7 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Save-DeviceScreenRecord||Save screen recording on device to local PC|
 |Start-DeviceApp||Start application on device|
 |Stop-DeviceApp||Stop application on device|
+|Wait-DeviceApp||Wait for application on device with time out|
 |Start-Perfetto||Start capturing Perfetto trace|
 |Start-AndroidProfiler|saap|Launch installed Android profiler|
 |Watch-Logcat|wl|Watch logcat of specific application|

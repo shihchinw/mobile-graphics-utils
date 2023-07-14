@@ -198,6 +198,43 @@ function Stop-DeviceApp {
     }
 }
 
+<#
+.SYNOPSIS
+Wait for application on device with time out.
+
+.PARAMETER AppName
+Application name.
+
+.PARAMETER ForceStopApp
+Force stop app after time out.
+
+.PARAMETER TimeOut
+Duration of waiting.
+
+.EXAMPLE
+Wait-DeviceApp -AppName com.foo.bar -TimeOut 30 -ForceStopApp
+
+Wait for com.foo.bar for up to 30 secs.
+#>
+function Wait-DeviceApp {
+    param(
+        [string] $AppName = '~',
+        [switch] $ForceStopApp,
+        [UInt16] $TimeOut = 10
+    )
+
+    $AppName = Resolve-AppName $AppName "Abort stopping application."
+    if (-not $AppName) {
+        return
+    }
+
+    adb shell "t=$TimeOut; while [ `"`$(pidof $AppName)`" ] && [ `$t -gt 0 ]; do sleep 1; t=`$((`$t - 1)); echo Waiting for $AppName in `$t secs; done"
+
+    if ($ForceStopApp) {
+        adb shell am force-stop $AppName
+    }
+}
+
 function Enter-AdbShell { adb shell "$Args" }
 Set-Alias -Name as -Value Enter-AdbShell
 
@@ -612,7 +649,9 @@ Output folder path.
 Duration of capturing in seconds.
 
 .EXAMPLE
-Save-Save-StreamlineCapture -AppName ? -Config config.xml
+Save-StreamlineCapture -AppName ? -Config config.xml
+
+Select an App entity and save its headless Sreamline capture with counters defined in config.xml.
 #>
 function Save-StreamlineCapture {
     param(
@@ -621,6 +660,7 @@ function Save-StreamlineCapture {
         [string] $Config,
         [string] $OutputName,
         [string] $OutputFolderPath = '.',
+        [switch] $NoTimeStr,
         [UInt16] $Duration = 10
     )
 
@@ -639,7 +679,7 @@ function Save-StreamlineCapture {
         return
     }
 
-    Stop-DeviceApp $AppName
+    Stop-DeviceApp $AppName -WaitForExit
 
     if (-not $OutputName) {
         $OutputName = $AppName
@@ -649,7 +689,7 @@ function Save-StreamlineCapture {
         $Config = "$PSScriptRoot/streamline_config.xml"
     }
 
-    $OutputFileName = Get-EncodedFilename $OutputName
+    $OutputFileName = if ($NoTimeStr) { $OutputName } else { Get-EncodedFilename $OutputName }
     $OutputFilePath = "$OutputFolderPath/$OutputFileName.apc.zip"
     $LwiOutDir = "$OutputFolderPath/lwi-out-$OutputFileName"
     $ProcArgs = "`"$ScriptPath`" --lwi-mode counters --lwi-api $API --package $AppName --headless $OutputFilePath --daemon `"$GatordPath`" --config $Config --lwi-out-dir $LwiOutDir"
@@ -661,8 +701,7 @@ function Save-StreamlineCapture {
     Start-DeviceApp $AppName -WaitForLaunch
     Write-Host "$AppName has been launched"
 
-    Start-Sleep $Duration
-    Stop-DeviceApp $AppName -WaitForExit
+    Wait-DeviceApp $AppName -TimeOut $Duration -ForceStopApp
     $StreamlineProc.Close()
     Write-Host "Close $AppName"
     return $OutputFilePath
