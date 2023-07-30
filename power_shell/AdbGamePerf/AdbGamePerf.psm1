@@ -656,12 +656,13 @@ Select an App entity and save its headless Sreamline capture with counters defin
 function Save-StreamlineCapture {
     param(
         [string] $AppName = '?',
-        [switch] $GLES,
         [string] $Config,
+        [UInt16] $Duration = 10,
         [string] $OutputName,
         [string] $OutputFolderPath = '.',
         [switch] $NoTimeStr,
-        [UInt16] $Duration = 10
+        [switch] $ClearLayers,
+        [switch] $GLES
     )
 
     $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
@@ -689,11 +690,20 @@ function Save-StreamlineCapture {
         $Config = "$PSScriptRoot/streamline_config.xml"
     }
 
+    $ActivatedLayerConfig = 'adb shell settings get global gpu_debug_layers' | Invoke-Expression
+    Write-Host "Activated layers: $ActivatedLayerConfig"
+
     $OutputFileName = if ($NoTimeStr) { $OutputName } else { Get-EncodedFilename $OutputName }
     $OutputFilePath = "$OutputFolderPath/$OutputFileName.apc.zip"
     $LwiOutDir = "$OutputFolderPath/lwi-out-$OutputFileName"
     $ProcArgs = "`"$ScriptPath`" --lwi-mode counters --lwi-api $API --package $AppName --headless $OutputFilePath --daemon `"$GatordPath`" --config $Config --lwi-out-dir $LwiOutDir"
     $StreamlineProc = Start-Process -FilePath python -ArgumentList $ProcArgs -WorkingDirectory . -PassThru -RedirectStandardError StreamlineCaptureStdErr.log
+
+    if (-not $ClearLayers -and $ActivatedLayerConfig -ne 'null') {
+        # Prepend previous active layers.
+        $StreamlineLayerConfig = 'adb shell settings get global gpu_debug_layers' | Invoke-Expression
+        adb shell settings put global gpu_debug_layers "$ActivatedLayerConfig`:$StreamlineLayerConfig"
+    }
 
     Start-Sleep 10  # Wait for launch of Streamline
 
@@ -704,6 +714,13 @@ function Save-StreamlineCapture {
     Wait-DeviceApp $AppName -TimeOut $Duration -ForceStopApp
     $StreamlineProc.Close()
     Write-Host "Close $AppName"
+
+    if ($ActivatedLayerConfig -ne 'null') {
+        # Recover activated layer configuration.
+        adb shell settings put global gpu_debug_layers $ActivatedLayerConfig
+        Write-Host "Recover activated layers: $ActivatedLayerConfig"
+    }
+
     return $OutputFilePath
 }
 
