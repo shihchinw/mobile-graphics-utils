@@ -871,19 +871,21 @@ function Stop-UnrealInsight {
 # https://docs.unrealengine.com/5.0/en-US/gpudump-viewer-tool-in-unreal-engine/
 function Save-UnrealGPUDump {
     param (
-        [string] $OutputFolderPath = '.'
+        [string] $OutputFolderPath = '.',
+        [switch] $KeepFilesOnDevice
     )
 
     uecmd DumpGPU
 
     $Log = adb shell "logcat UE:D *:S -d | grep DumpGPU | tail -1"
-    if (-not ($Log -match "../../../(.+)/Base/ConsoleVariables.csv")) {
+    if (-not ($Log -match "../../../((\w+)/(.+))/Base/ConsoleVariables.csv")) {
         Write-Warning "Can't find dumped data"
         return
     }
 
     $PackageName = Get-FocusedPackageName
-    $ParentFolderPath = "/sdcard/Android/data/$PackageName/files/UnrealGame/Mobile"
+    $AppName = $Matches.2
+    $ParentFolderPath = "/sdcard/Android/data/$PackageName/files/UnrealGame/$AppName"
 
     $RelativePath = $Matches.1
     $DeviceOutFolderPath = ("$ParentFolderPath/$RelativePath").Replace('\', '/')
@@ -891,8 +893,12 @@ function Save-UnrealGPUDump {
     $FolderName = Split-Path -Leaf $DeviceOutFolderPath
     New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
     Write-Host "Pulling GPUDump '$DeviceOutFolderPath'"
-
     adb pull $DeviceOutFolderPath "$OutputFolderPath/$FolderName"
+
+    if (-not $KeepFilesOnDevice) {
+        Write-Host "Clean GPUDump on device."
+        adb shell rm -r $DeviceOutFolderPath
+    }
 }
 
 function Show-UnrealLogcat {
