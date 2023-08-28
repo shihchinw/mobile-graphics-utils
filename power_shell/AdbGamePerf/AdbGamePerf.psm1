@@ -462,6 +462,8 @@ function Start-Perfetto {
     if ($Filename) {
         $OutFileName = Get-EncodedFilename $Filename '.perfetto-trace'
         $CmdArgs.Add("-o $OutFileName") | Out-Null
+        $CmdArgs.Add('-o') | Out-Null
+        $CmdArgs.Add($OutFileName) | Out-Null
     }
 
     $CmdArgs.Add("-b $Buffer") > $null
