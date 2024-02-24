@@ -1,7 +1,7 @@
 # Default config settings.
 $Config = @{
     AGP_ANDROID_PROFILER = 'C:\Program Files\Android\Android Studio\bin\profiler.exe'
-    AGP_MALI_MOBILE_STUDIO = 'C:\Program Files\Arm\Arm Mobile Studio 2023.0'
+    AGP_MALI_MOBILE_STUDIO = 'C:\Program Files\Arm\Arm Performance Studio 2024.0'
 }
 
 $ConfigFilepath = "$PSScriptRoot/config.json"
@@ -56,6 +56,8 @@ function Get-MobileStudioVersion {
 
     $Name = Split-Path -Path $Filepath -Leaf
     if ($Name -match 'Arm Mobile Studio (\d+\.\d)') {
+        return $Matches[1]
+    } elseif ($Name -match 'Arm Performance Studio (\d+\.\d)') {
         return $Matches[1]
     }
 
