@@ -407,17 +407,31 @@ Filename of output mp4 file.
 #>
 function Save-DeviceScreenRecord {
     param (
-        [byte]$Duration = 5,
-
+        [byte]$Duration,
         [ValidateNotNullOrEmpty()]
-        [string]$Filename = "record"
+        [string]$Filename = "record",
+        [switch]$OpenFileAfterRecording
     )
 
     $OutFileName = Get-EncodedFilename $Filename '.mp4'
     $DeviceFilePath = '/sdcard/record.mp4'
-    adb shell "screenrecord --time-limit $Duration $DeviceFilePath"
-    adb pull $DeviceFilePath $OutFileName
-    Write-Host "Saved $Duration sec(s) screen recording to '$OutFilename'"
+    try {
+        if (!$Duration) {
+            adb shell "screenrecord $DeviceFilePath"
+        } else {
+            Write-Host "Start recording for $Duration secs"
+            adb shell "screenrecord --time-limit $Duration $DeviceFilePath"
+        }
+    } catch {
+        Write-Host "Stop screen recording"
+    } finally {
+        adb pull $DeviceFilePath $OutFileName
+        Write-Host "Saved screen recording to '$OutFilename'"
+
+        if ($OpenFileAfterRecording) {
+            Invoke-Item $OutFileName
+        }
+    }
 }
 
 <#
