@@ -891,9 +891,11 @@ function Save-UnrealGPUDump {
         [switch] $KeepFilesOnDevice
     )
 
+    adb shell "logcat -c"
     uecmd DumpGPU
 
-    $Log = adb shell "logcat UE:D *:S -d | grep DumpGPU | tail -1"
+    $Log = adb shell "logcat UE:D *:S -d | grep 'DumpGPU dumped rendering cvars' | tail -1"
+    Write-Host $Log
     if (-not ($Log -match "../../../((\w+)/(.+))/Base/ConsoleVariables.csv")) {
         Write-Warning "Can't find dumped data"
         return
@@ -905,6 +907,14 @@ function Save-UnrealGPUDump {
 
     $RelativePath = $Matches.1
     $DeviceOutFolderPath = ("$ParentFolderPath/$RelativePath").Replace('\', '/')
+
+    Write-Host "Wait for dumping..."
+    # TODO: Check status and redirect dumping progress to terminal.
+
+    # Wait for dumping process. Typically it will show following two lines:
+    # LogDumpGPU: Display: DumpGPU status = dumping
+    # LogDumpGPU: Display: DumpGPU status = ok
+    adb logcat -m 2 -e 'DumpGPU status' | Out-Null
 
     $FolderName = Split-Path -Leaf $DeviceOutFolderPath
     New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
