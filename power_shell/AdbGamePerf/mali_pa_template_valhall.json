@@ -1,0 +1,85 @@
+{
+  "groups": [
+    {
+      "title": "System behavior per frame",
+      "charts": [
+        {
+          "chart": "CPU cycles [PA]",
+          "title": "GPU cycles per frame"
+        },
+        {
+          "chart": "GPU cycles [PA]",
+          "title": "GPU cycles per frame"
+        },
+        {
+          "chart": "Shader cycles [PA]",
+          "title": "Shader cycles per frame"
+        },
+        {
+          "chart": "GPU bandwidth [PA]",
+          "title": "GPU bandwidth per frame"
+        },
+        {
+          "chart": "Mali Shader Core L2 Reads",
+          "title": "Shader core L2 memory reads per frame",
+          "units": "bytes"
+        },
+        {
+          "chart": "Mali Shader Core Writes",
+          "title": "Shader core writes per frame"
+        }
+      ]
+    },
+    {
+      "title": "Content complexity",
+      "description": "This section shows counter data normalized against frame rate. Each chart shows the test metric on the left axis and the frame rate on the right axis. A strong correlation between changes in the test metric and a drop in frame rate indicates that the test metric is contributing to the loss in performance.",
+      "charts": [
+        {
+          "chart": "Draw Calls / Frame",
+          "title": "Draw calls per frame"
+        },
+        {
+          "chart": "Workloads / Frame",
+          "title": "Workloads per frame"
+        },
+        {
+          "chart": "Mali Geometry Usage",
+          "title": "Primitives per frame"
+        },
+        {
+          "chart": "Mali Fragment Quads",
+          "title": "Fragment quads per frame"
+        },
+        {
+          "chart": "Mali Fragment ZS Quads",
+          "title": "Fragment ZS quads frame"
+        },
+        {
+          "chart": "Overdraw [PA]",
+          "title": "Overdraw per frame"
+        }
+      ]
+    },
+    {
+      "title": "Ray tracing behavior per frame",
+      "charts": [
+        {
+          "chart": "Mali Core Ray Tracing Usage",
+          "title": "RTU cycles per frame"
+        },
+        {
+          "chart": "Mali Core Ray Tracing Properties",
+          "title": "Rays per frame"
+        },
+        {
+          "chart": "Mali Core Ray Tracing Box Coherency",
+          "title": "Ray-Box Test Coherency"
+        },
+        {
+          "chart": "Mali Core Ray Tracing Tri Coherency",
+          "title": "Ray-Triangle Test Coherency"
+        }
+      ]
+    }
+  ]
+}

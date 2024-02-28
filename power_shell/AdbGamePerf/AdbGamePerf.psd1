@@ -12,7 +12,7 @@
 RootModule = 'AdbGamePerf.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.5.2'
+ModuleVersion = '0.5.3'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -109,7 +109,7 @@ AliasesToExport = @('as', 'wl', 'saap', 'sasg', 'svsc', 'ipa', 'lwi', 'uecmd', '
 # ModuleList = @()
 
 # List of all files packaged with this module
-FileList = @('record_android_trace', 'shader_profile.py')
+FileList = @('record_android_trace', 'shader_profile.py', 'mali_pa_template_valhall.json')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{

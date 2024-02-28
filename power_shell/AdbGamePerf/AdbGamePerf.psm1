@@ -575,25 +575,96 @@ function Enable-LightWeightInterceptor {
 Invoke Mali Performance Advisor.
 
 .EXAMPLE
-Invoke-PerformanceAdvisor -h
+Invoke-PerformanceAdvisor -help
 
 Show help flags of Performance Advisor in Mali Mobile Studio.
 
 .EXAMPLE
-Invoke-PerformanceAdvisor foo.apc -t json
+Invoke-PerformanceAdvisor foo.apc -CustomReportTemplate Valhall
 
-Import Streamline capture foo.apc and generate output report.
+Import Streamline capture foo.apc and generate output report with template mali_pa_template_valhall.json.
+
+.EXAMPLE
+Invoke-PerformanceAdvisor foo.apc -ClipStart 100f -ClipEnd 500f
+
+Import Streamline capture foo.apc and generate output between 100 to 500 frames.
+
+.EXAMPLE
+Invoke-PerformanceAdvisor foo.apc -ClipStart 100 -ClipEnd 500
+
+Import Streamline capture foo.apc and generate output for 100 to 500ms.
+
+.EXAMPLE
+Invoke-PerformanceAdvisor foo.apc -ClipStart 100f -ClipEnd 500f
+
+Import Streamline capture foo.apc and generate output for frames 100 to 500.
+
+.EXAMPLE
+Invoke-PerformanceAdvisor foo.apc -ChartListOutput bar.json
+
+Output charts from foo.apc and save as bar.json.
+
+.EXAMPLE
+Invoke-PerformanceAdvisor foo.apc -ExtraArgs --build-name=FOO
+
+Generate report with extra arguments --build-name.
 
 .LINK
 https://developer.arm.com/Tools%20and%20Software/Performance%20Advisor
 #>
 function Invoke-PerformanceAdvisor {
+    param(
+        [Alias("apc")]
+        [string]$StreamlineCapture,
+        [string]$CustomReport,
+        [ValidateSet($null, "Valhall")]
+        [string]$CustomReportTemplate,
+        [string]$ChartListOutput,
+        [string]$ClipStart,
+        [string]$ClipEnd,
+        [Int16]$TargetFPS = 60,
+        [Alias("mspf")]
+        [switch]$UseFrameTime,
+        [switch]$Help,
+        [string[]]$ExtraArgs
+    )
+
+    $CmdArgs = New-Object System.Collections.ArrayList
+    if ($Help) {
+        $CmdArgs.Add("--help") | Out-Null
+    } else {
+        if ($ChartListOutput) {
+            $CmdArgs.Add("--chart-list-output=$ChartListOutput") | Out-Null
+        } elseif ($CustomReport) {
+            $CmdArgs.Add("--custom-report=$CustomReport") | Out-Null
+        } elseif ($CustomReportTemplate -eq "Valhall") {
+            $CmdArgs.Add("--custom-report=$PSScriptRoot/mali_pa_template_valhall.json") | Out-Null
+        }
+
+        if ($ClipStart) {
+            $CmdArgs.Add("--clip-start=$ClipStart") | Out-Null
+        }
+        if ($ClipEnd) {
+            $CmdArgs.Add("--clip-end=$ClipEnd") | Out-Null
+        }
+        if ($TargetFPS) {
+            $CmdArgs.Add("--target-fps=$TargetFPS") | Out-Null
+        }
+        if ($UseFrameTime) {
+            $CmdArgs.Add("--mspf") | Out-Null
+        }
+
+        $CmdArgs.Add($StreamlineCapture) | Out-Null
+        $CmdArgs += $ExtraArgs
+    }
+
     $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
     $Version = Get-MobileStudioVersion $MobileStudioPath
+
     if ($Version -ge '2023.1') {
-        & "$MobileStudioPath/streamline/Streamline-cli.exe" -pa $Args
+        & "$MobileStudioPath/streamline/Streamline-cli.exe" -pa $CmdArgs
     } else {
-        & "$MobileStudioPath/performance_advisor/pa.exe" $Args
+        & "$MobileStudioPath/performance_advisor/pa.exe" $CmdArgs
     }
 }
 
