@@ -55,6 +55,8 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Stop-UnrealStatFile||Stop current statistics capture|
 |Start-UnrealInsight||Start a insight capture|
 |Stop-UnrealInsight||Stop current insight capture and pull file to local PC|
+|Connect-UnrealInsight||Setup TCP connection and trace channels for Unreal Insight via system property|
+|Disconnect-UnrealInsight||Clear trace connection configuration|
 |Save-UnrealGPUDump||Save GPU dump and pull files to local PC|
 |Show-UnrealLogcat|uelog|Show logcat messages related to Unreal engine|
 |Show-UnrealSynthBenchmark||Show results of SynthBenchmark|

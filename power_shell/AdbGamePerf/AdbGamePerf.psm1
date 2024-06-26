@@ -957,6 +957,47 @@ function Stop-UnrealInsight {
     adb pull $DeviceOutFilePath $OutputFolderPath
 }
 
+function Connect-UnrealInsight {
+    param (
+        [switch] $Memory,
+        [switch] $LoadTime,
+        [switch] $Stats
+    )
+
+    # Pass through TCP connections made on device over USB.
+    adb reverse tcp:1980 tcp:1980
+
+    $LastCommandLine = adb shell getprop debug.ue.commandline
+    adb shell setprop debug.ue.commandline.bak "$LastCommandLine"
+
+    # Detailed arguments https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-insights-reference-in-unreal-engine-5
+    $Channels = [System.Collections.ArrayList]@("Default", "GPU")
+
+    if ($Memory) {
+        $Channels.Add('Memory') | Out-Null
+    }
+
+    if ($LoadTime) {
+        $Channels.Add('LoadTime') | Out-Null
+    }
+
+    if ($Stats) {
+        $Channels.Add('Stats') | Out-Null
+    }
+
+    $ChannelStr = $Channels -join ','
+
+    adb shell setprop debug.ue.commandline "'-tracehost=127.0.0.1 -trace=$ChannelStr'"
+    $UECmdLine = adb shell getprop debug.ue.commandline
+    Write-Host "UE commandline: $UECmdLine"
+}
+
+function Disconnect-UnrealInsight {
+    $LastCommandLine = adb shell getprop debug.ue.commandline.bak
+    adb shell setprop debug.ue.commandline "$LastCommandLine"
+    adb shell setprop debug.ue.commandline.bak ""
+}
+
 # https://docs.unrealengine.com/5.0/en-US/gpudump-viewer-tool-in-unreal-engine/
 function Save-UnrealGPUDump {
     param (
