@@ -69,6 +69,14 @@ function Get-MobileStudioVersion {
 # Basic Android helper commands
 # -----------------------------------------------------------------------------
 <#
+.SYNOPSIS Confirm if connected device has root access permission.
+#>
+function Confirm-RootAccess {
+    $Result = adb shell "su 0 echo true || exit 0"
+    return $Result -eq 'true'
+}
+
+<#
 .SYNOPSIS
 Get name of active application in the foreground.
 #>
@@ -516,13 +524,32 @@ By using TCP connection, we can start capturing counters in the middle of execut
 https://developer.arm.com/documentation/102718/0102/Streamline-can-not-access-my-device
 #>
 function Start-StreamlineGator {
+    param (
+        $AppName = '~'
+    )
+
     $MobileStudioPath = Resolve-Filepath $env:AGP_MALI_MOBILE_STUDIO 'AGP_MALI_MOBILE_STUDIO'
     $Version = Get-MobileStudioVersion $MobileStudioPath
+
     if ($Version -ge '2023.2') {
-        adb root
+        $HasRootAccess = Confirm-RootAccess
+        if ($HasRootAccess) {
+            adb root
+            $CmdArg = '--system-wide=yes'
+        } else {
+            # We can't capture system wide counters on non-rooted devices.
+            # We need to specify target application for capturing.
+            $AppName = Resolve-AppName $AppName "Abort starting application."
+            if (-not $AppName) {
+                return
+            }
+
+            $CmdArg = "-l $AppName"
+        }
+
         adb push "$MobileStudioPath/streamline/bin/android/arm64/gatord" /data/local/tmp
         adb shell 'chmod 777 /data/local/tmp/gatord'
-        adb shell '/data/local/tmp/gatord --system-wide=yes'
+        adb shell "/data/local/tmp/gatord $CmdArg"
     } else {
         $ScriptPath = "$MobileStudioPath/streamline/gator/gator_me.py"
         python $ScriptPath --daemon "$MobileStudioPath/streamline/bin/android/arm64/gatord"
