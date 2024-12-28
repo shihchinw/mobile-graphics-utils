@@ -984,6 +984,13 @@ function Stop-UnrealInsight {
     adb pull $DeviceOutFilePath $OutputFolderPath
 }
 
+<#
+.SYNOPSIS
+Enable TCP connection between UnrealInsight and UnrealEditor.
+
+.NOTES
+Need at least one UnrealEditor instance for connecting UnrealInsight. (No need to open the same uproject of built apk)
+#>
 function Connect-UnrealInsight {
     param (
         [switch] $Memory,
@@ -995,7 +1002,7 @@ function Connect-UnrealInsight {
     adb reverse tcp:1980 tcp:1980
 
     $LastCommandLine = adb shell getprop debug.ue.commandline
-    adb shell setprop debug.ue.commandline.bak "$LastCommandLine"
+    adb shell setprop debug.ue.commandline.bak "'$LastCommandLine'"
 
     # Detailed arguments https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-insights-reference-in-unreal-engine-5
     $Channels = [System.Collections.ArrayList]@("Default", "GPU")
@@ -1016,13 +1023,21 @@ function Connect-UnrealInsight {
 
     adb shell setprop debug.ue.commandline "'-tracehost=127.0.0.1 -trace=$ChannelStr'"
     $UECmdLine = adb shell getprop debug.ue.commandline
-    Write-Host "UE commandline: $UECmdLine"
+    Write-Host "UnrealInsight config: $UECmdLine"
+
+    $EditorProcess = Get-Process UnrealEditor -ErrorAction SilentlyContinue
+    if ($EditorProcess) {
+        Write-Host 'Found running UnrealEditor. Ready to connect UnrealInsight after launching apk.'
+    } else {
+        Write-Warning 'Not found any running process of UnrealEditor.'
+        Write-Warning 'Remember to start UnrealEditor before connecting UnrealInsight!'
+    }
 }
 
 function Disconnect-UnrealInsight {
     $LastCommandLine = adb shell getprop debug.ue.commandline.bak
-    adb shell setprop debug.ue.commandline "$LastCommandLine"
-    adb shell setprop debug.ue.commandline.bak ""
+    adb shell setprop debug.ue.commandline "'$LastCommandLine'"
+    adb shell setprop debug.ue.commandline.bak "''"
 }
 
 # https://docs.unrealengine.com/5.0/en-US/gpudump-viewer-tool-in-unreal-engine/
