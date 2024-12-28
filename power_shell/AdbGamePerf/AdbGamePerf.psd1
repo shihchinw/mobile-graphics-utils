@@ -84,6 +84,8 @@ FunctionsToExport = @(
     'Invoke-MaliOfflineCompiler',
     'Save-StreamlineCapture',
     'Invoke-UnrealCommand',
+    'Show-UnrealCommandLine',
+    'Enable-UnrealDebugMarkers', 'Disable-UnrealDebugmarkers',
     'Start-UnrealFPSChart', 'Stop-UnrealFPSChart',
     'Start-UnrealStatFile', 'Stop-UnrealStatFile',
     'Start-UnrealInsight', 'Stop-UnrealInsight',

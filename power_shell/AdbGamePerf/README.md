@@ -49,6 +49,9 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Command|Alias|Usage|
 |-|-|-|
 |Invoke-UnrealCommand|uecmd|Send console command to connected device|
+|Show-UnrealCommandLine||Show value of debug.ue.commandline|
+|Enable-UnrealDebugMarkers||Enable Vulkan draw markers for Debug/Develop built apk|
+|Disable-UnrealDebugMarkers||Disable Vulkan draw markers for Debug/Develop built apk|
 |Start-UnrealFPSChart||Start FPS chart data capture on device|
 |Stop-UnrealFPSChart||Stop FPS chart data capture on device|
 |Start-UnrealStatFile||Start a statistics capture|

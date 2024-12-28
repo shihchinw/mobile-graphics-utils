@@ -858,6 +858,31 @@ Invoke-UnrealCommand t.MaxFPS=60
 function Invoke-UnrealCommand { adb shell "am broadcast -a android.intent.action.RUN -e cmd '$Args'" }
 Set-Alias -Name uecmd -Value Invoke-UnrealCommand
 
+function Show-UnrealCommandLine {
+    $UECmdLine = adb shell getprop debug.ue.commandline
+    Write-Host "UE commandline: $UECmdLine"
+}
+
+<#
+.SYNOPSIS
+Enable Vulkan debug markers for Debug/Develop built apk.
+#>
+function Enable-UnrealDebugMarkers {
+    $LastCommandLine = adb shell getprop debug.ue.commandline
+    adb shell setprop debug.ue.commandline.bak "'$LastCommandLine'"
+    adb shell setprop debug.ue.commandline -forcevulkanddrawmarkers
+}
+
+<#
+.SYNOPSIS
+Disable Vulkan debug markers.
+#>
+function Disable-UnrealDebugMarkers { 
+    $LastCommandLine = adb shell getprop debug.ue.commandline.bak
+    adb shell setprop debug.ue.commandline "'$LastCommandLine'"
+    adb shell setprop debug.ue.commandline.bak "''"
+}
+
 <#
 .SYNOPSIS
 Start FPS chart data capture on device.
