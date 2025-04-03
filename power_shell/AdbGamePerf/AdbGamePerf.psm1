@@ -81,7 +81,7 @@ function Confirm-RootAccess {
 Get name of active application in the foreground.
 #>
 function Get-FocusedPackageName {
-    $Log = adb shell "dumpsys activity activities | grep mFocusedApp"
+    $Log = adb shell "dumpsys activity activities | grep mFocusedApp=ActivityRecord"
     if (-not ($Log -match "\w+([.]\w+)+")) {
         Write-Warning "Can't find focused package"
         return
