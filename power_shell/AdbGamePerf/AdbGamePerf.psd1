@@ -12,7 +12,7 @@
 RootModule = 'AdbGamePerf.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.5.5'
+ModuleVersion = '0.5.6'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -90,7 +90,7 @@ FunctionsToExport = @(
     'Start-UnrealStatFile', 'Stop-UnrealStatFile',
     'Start-UnrealInsight', 'Stop-UnrealInsight',
     'Connect-UnrealInsight', 'Disconnect-UnrealInsight',
-    'Save-UnrealGPUDump',
+    'Save-UnrealCVars', 'Save-UnrealGPUDump',
     'Show-UnrealLogcat', 'Export-UnrealCallStats',
     'Show-UnrealSynthBenchmark',
     'Show-UnrealRenderFeature', 'Hide-UnrealRenderFeature',

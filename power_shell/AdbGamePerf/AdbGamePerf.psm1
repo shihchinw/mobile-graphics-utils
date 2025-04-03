@@ -1065,6 +1065,49 @@ function Disconnect-UnrealInsight {
     adb shell setprop debug.ue.commandline.bak "''"
 }
 
+<#
+.SYNOPSIS
+Save console variables to csv.
+#>
+function Save-UnrealCVars {
+    param (
+        [string] $OutputFileName = 'ConsoleVars.csv',
+        [string] $OutputFolderPath = '.',
+        [switch] $KeepFilesOnDevice
+    )
+
+    adb shell "logcat -c"
+    uecmd DumpCVars -csv
+
+    $Log = adb shell "logcat UE:D *:S -d | grep 'Saved/Logs/ConsoleVars.csv' | tail -1"
+    Write-Host ">>$Log>>"
+    if (-not ($Log -match "../../../((\w+)/(.+))/ConsoleVars.csv")) {
+        Write-Warning "Can't find dumped data"
+        return
+    }
+
+    $PackageName = Get-FocusedPackageName
+    $AppName = $Matches.2
+    $ParentFolderPath = "/storage/emulated/0/UnrealGame/$AppName"
+    $FoundInEmulatedFolder = adb shell "ls $ParentFolderPath > dev/null 2>&1 && echo 'True'"
+    if (-not $FoundInEmulatedFolder) {
+        $ParentFolderPath = "/sdcard/Android/data/$PackageName/files/UnrealGame/$AppName"
+    }
+
+    $RelativePath = $Matches.1
+    $DeviceOutFolderPath = ("$ParentFolderPath/$RelativePath").Replace('\', '/')
+    $DeviceOutFillePath = "$DeviceOutFolderPath/ConsoleVars.csv"
+
+    Write-Host $DeviceOutFillePath
+    adb pull $DeviceOutFillePath "$OutputFolderPath/$OutputFileName"
+
+    if (-not $KeepFilesOnDevice) {
+        Write-Host "Clean ConsoleVars.csv on device."
+        adb shell rm -r $DeviceOutFillePath
+    }
+}
+
+
 # https://docs.unrealengine.com/5.0/en-US/gpudump-viewer-tool-in-unreal-engine/
 function Save-UnrealGPUDump {
     param (
