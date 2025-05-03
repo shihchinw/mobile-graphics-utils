@@ -12,7 +12,7 @@
 RootModule = 'AdbGamePerf.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.5.6'
+ModuleVersion = '0.5.7'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -85,6 +85,9 @@ FunctionsToExport = @(
     'Save-StreamlineCapture',
     'Invoke-UnrealCommand',
     'Show-UnrealCommandLine',
+    'Enable-UnrealCsvProfile', 'Disable-UnrealCsvProfile', 
+    'Get-UnrealCsvProfile',
+    'Convert-UnrealCsvToSvg', 'Convert-UnrealCsvDirToSvg'
     'Enable-UnrealDebugMarkers', 'Disable-UnrealDebugmarkers',
     'Start-UnrealFPSChart', 'Stop-UnrealFPSChart',
     'Start-UnrealStatFile', 'Stop-UnrealStatFile',

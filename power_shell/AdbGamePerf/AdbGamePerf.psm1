@@ -186,11 +186,16 @@ function Start-DeviceApp {
 
     if ($WaitForLaunch) {
         # Pipe to Out-Null for waiting adb finishing its work.
-        adb shell "while [ ! `"`$(pidof $AppName)`" ]; do (sleep 1); done" | Out-Null
+        # But, this approach does not block caller, thus we periodically check with adb command.
+        # adb shell "while [ ! `"`$(pidof $AppName)`" ]; do (sleep 1); done" | Out-Null
+        while (!(adb shell "pidof $AppName")) {
+            Start-Sleep -Seconds 0.5
+        }
     }
 }
 
 function Stop-DeviceApp {
+
     param(
         [string] $AppName = '~',
         [switch] $WaitForExit
@@ -204,7 +209,11 @@ function Stop-DeviceApp {
     adb shell am force-stop $AppName
     if ($WaitForExit) {
         # Pipe to Out-Null for waiting adb finishing its work.
-        adb shell "while [ `"`$(pidof $AppName)`" ]; do (sleep 1); done" | Out-Null
+        # But, this approach does not block caller, thus we periodically check with adb command.
+        # adb shell "while [ `"`$(pidof $AppName)`" ]; do (sleep 1); done" | Out-Null
+        while (adb shell "pidof $AppName") {
+            Start-Sleep -Seconds 0.5
+        }
     }
 }
 
@@ -228,9 +237,9 @@ Wait for com.foo.bar for up to 30 secs.
 #>
 function Wait-DeviceApp {
     param(
-        [string] $AppName = '~',
-        [switch] $ForceStopApp,
-        [UInt16] $TimeOut = 10
+        [string]$AppName = '~',
+        [switch]$ForceStopApp,
+        [Int32]$TimeOut = 10
     )
 
     $AppName = Resolve-AppName $AppName "Abort stopping application."
@@ -238,10 +247,26 @@ function Wait-DeviceApp {
         return
     }
 
-    adb shell "t=$TimeOut; while [ `"`$(pidof $AppName)`" ] && [ `$t -gt 0 ]; do sleep 1; t=`$((`$t - 1)); echo Waiting for $AppName in `$t secs; done"
+    if ($TimeOut -lt 0) {
+        $TimeOut = [Int32]::MaxValue
+    }
 
-    if ($ForceStopApp) {
-        adb shell am force-stop $AppName
+    try {
+        # Following approach not works for all devices.
+        # adb shell "t=$TimeOut; while [ `"`$(pidof $AppName)`" ] && [ `$t -gt 0 ]; do sleep 1; t=`$((`$t - 1)); echo Waiting for $AppName in `$t secs; done"
+
+        # Therefore, we periodically check app with adb command.
+        while ((adb shell "pidof $AppName") -and ($TimeOut -gt 0)) {
+            Start-Sleep -Seconds 1
+            $TimeOut -= 1
+        }
+
+    } catch {
+        Write-Host "Abort wating $AppName..."
+    } finally {
+        if ($ForceStopApp) {
+            adb shell am force-stop $AppName
+        }
     }
 }
 
@@ -865,6 +890,410 @@ function Show-UnrealCommandLine {
 
 <#
 .SYNOPSIS
+Enable csvprofile from UE commandline.
+
+.PARAMETER Frames
+Specifies frame count for csv profiling.
+
+.PARAMETER FPS
+Specifies FPS for fixed timestep.
+
+.PARAMETER BenchmarkMode
+Enable benchmark mode with fixed timestep and fixed random seed.
+
+.LINK
+https://gpuopen.com/learn/unreal-engine-performance-guide/#reducing-noise-in-profiling-results
+
+.EXAMPLE
+Enable-UnrealCsvProfile -FPS 60 -Frames 3600
+
+Enable csvprofile for 3600 frames with 60FPS as fixed time step.
+
+.EXAMPLE
+Enable-UnrealCsvProfile -FPS 60 -Frames 3600 -BenchmarkMode
+
+Enable csvprofile for 3600 frames with 60FPS fixed time step in benchmark mode.
+#>
+function Enable-UnrealCsvProfile {
+    param (
+        [uint]$Frames = 3600,
+        [byte]$FPS = 60,
+        [switch]$BenchmarkMode
+    )
+
+    $LastCommandLine = adb shell getprop debug.ue.commandline
+    adb shell setprop debug.ue.commandline.bak "'$LastCommandLine'"
+
+    $CmdArgs = New-Object System.Collections.ArrayList
+    $CmdArgs.Add("-ExecCmds=`"csvprofile frames=$Frames`"") | Out-Null
+    $CmdArgs.Add("-fps=$FPS") | Out-Null
+
+    if ($BenchmarkMode) {
+        # Ideally, we need to set '-nosound -noailogging -noverifygc -novsync' as well.
+        $CmdArgs.Add("-benchmark -deterministic") | Out-Null
+        $BenchmarkSeconds = $Frames / $FPS
+        $CmdArgs.Add("-benchmarkseconds=$BenchmarkSeconds") | Out-Null
+    }
+
+    # Set commandline arguments to system property.
+    # Caution: this config would be overrided by UECommandLine.txt.
+    $CmdArgStr = $CmdArgs -join ' '
+    adb shell setprop debug.ue.commandline "'$CmdArgStr'"
+
+    Show-UnrealCommandLine
+}
+
+function Disable-UnrealCsvProfile {
+    $LastCommandLine = adb shell getprop debug.ue.commandline.bak
+    adb shell setprop debug.ue.commandline "'$LastCommandLine'"
+    adb shell setprop debug.ue.commandline.bak "''"
+
+    Show-UnrealCommandLine
+}
+
+<#
+.SYNOPSIS
+Get .csv profile from Unreal app when CSV profiling is enabled.
+
+.DESCRIPTION
+CSV profiling should be enabled via Enable-UnrealCsvProfile or custom UECommandLine.txt.
+
+.PARAMETER AppName
+Specifies package name to fetch its csv profile. It supports following fast-access options:
+    ~ Focused application (i.e. foregraound activity).
+    ? Select application name from package list.
+    ! Last selected application name.
+
+.PARAMETER LaunchNewAppExec
+Launch new APP process for csv profiling.
+
+.PARAMETER WaitForExit
+Get .csv profile until running APP exits.
+
+.LINK
+Specify a URI to a help page, this will show when Get-Help -Online is used.
+
+.EXAMPLE
+Get-UnrealCsvProfile ? -LaunchNewAppExec
+
+Select app name from installed apks and launch new app process for csv profiling.
+
+.EXAMPLE
+Get-UnrealCsvProfile ~ -WaitForExit
+
+Get .csv profile of foreground app until the app exits.
+#>
+function Get-UnrealCsvProfile {
+    param(
+        [string]$AppName = '?',
+        [string]$CsvName = 'Profile',
+        [string]$OutputFolderPath = '.',
+        [switch]$LaunchNewAppExec,
+        [switch]$WaitForExit
+    )
+
+    $AppName = Resolve-AppName $AppName "Abort getting csv profile."
+    if (-not $AppName) {
+        Write-Warning("Not found valid application name.")
+        return
+    }
+
+    Save-AppName $AppName
+
+    if ($LaunchNewAppExec) {
+        Stop-DeviceApp $AppName -WaitForExit
+        Start-DeviceApp $AppName -WaitForLaunch
+    }
+
+    # TODO: Check if csvprofiling is enabled.
+
+    # Compose folder path to fetch latest .csv file.
+    $ProjectName = adb shell "ls /sdcard/Android/data/$AppName/files/UnrealGame"
+    $CsvFolderOnDevice = "/sdcard/Android/data/$AppName/files/UnrealGame/$ProjectName/$ProjectName/Saved/Profiling/CSV"
+    $LatestFileName = adb shell "ls $CsvFolderOnDevice | tail -1"
+    if (-not ($LatestFileName -match "Profile\((\d+_\d+)\).csv")) {
+        Write-Warning "Can't find valid csv filename!"
+        return
+    }
+
+    $DateTimeStr = $Matches.1
+
+    $CsvFilePathOnDevice = "$CsvFolderOnDevice/$LatestFileName"
+    Write-Host("Writing to $CsvFilePathOnDevice")
+
+    try {
+        if ($LaunchNewAppExec -or $WaitForExit) {
+            Wait-DeviceApp $AppName -TimeOut -1
+        }
+    } finally {
+        $PidOnDevice = adb shell "pidof $AppName"
+        if ($PidOnDevice) {
+            do {
+                $Choice = Read-Host "Do you want to stop '$AppName'? (Y/[N])"
+                if (!$Choice) {
+                    break
+                } elseif ($Choice -eq 'y') {
+                    Stop-DeviceApp $AppName -WaitForExit
+                }
+            } until ($Choice -match "[yn]")
+        }
+
+        New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
+        $FileName = "$CsvName`_$DateTimeStr.csv"
+        $OutputFilePath = Join-Path $OutputFolderPath $FileName
+        adb pull $CsvFilePathOnDevice $OutputFilePath
+    }
+}
+
+enum UECsvProfilePreset {
+    Unknown
+    CPUFreq
+    SystemMemory
+    ThreadTime
+    RenderThread
+    GameThread
+    RHI
+    RDG
+    DrawCall
+    Shaders
+    PSO
+    RayTracing
+}
+
+<#
+.SYNOPSIS
+Convert CSV profile into interactive SVG file.
+
+.DESCRIPTION
+Assume the location of CSVToSVG.exe is already added to $env:Path environment variable.
+[UnrealEngineDirectory]/Engine/Binaries/DotNET/CSVTools/CSVToSVG.exe
+
+It provides presets with corresponding stats:
+
+* CPUFreq: AndroidCPU/CPUFreq*
+* SystemMemory: AndroidMemory/*
+* ThreadTime: (FrameTime, GameThreadTime, RenderThreadTime, RHIThreadTime)
+* RenderThread: Exclusive/RenderThread/*
+* GameThread: Exclusive/GameThread/*
+* RHI: RHI/*
+* DrawCall: DrawCall/*
+* Shaders: Shaders/*
+* PSO: PSO/*
+* RayTracing: RayTracingGeometry/*
+
+.PARAMETER Filepath
+Specifies a .csv profile.
+
+.PARAMETER ShowEvents
+Specifies event names to show in the graph. Default is '*' (all events).
+
+.LINK
+https://dev.epicgames.com/documentation/en-us/unreal-engine/csvtosvg-tool?application_version=4.27
+
+.EXAMPLE
+Convert-UnrealCsvToSvg foo.csv -Preset ThreadTime
+
+Generate svg graph for (FrameTime, GameThreadTime, RenderThreadTime, RHIThreadTime).
+#>
+function Convert-UnrealCsvToSvg {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [string]$StartEvent,
+        [string]$EndEvent,
+        [string]$Title,
+        [string]$OutputFileName,
+        [string]$OutputFolderPath = ".",
+        [single]$MinX,
+        [single]$MaxX,
+        [single]$MinY,
+        [single]$MaxY,
+        [UECsvProfilePreset]$Preset = [UECsvProfilePreset]::ThreadTime,
+        [string []]$ShowEvents = '*'
+    )
+
+    $CmdArgs = [System.Collections.ArrayList]@("-csvs", $Path, "-interactive", "-stats")
+    $PresetName = "Unknown"
+
+    if ($Preset -eq [UECsvProfilePreset]::RenderThread) {
+        $CmdArgs.Add("Exclusive/RenderThread/*") | Out-Null
+        $PresetName ="RenderThread"
+    } elseif ($preset -eq [UECsvProfilePreset]::GameThread) {
+        $CmdArgs.Add("Exclusive/GameThread/*") | Out-Null
+        $PresetName ="GameThread"
+    } elseif ($preset -eq [UECsvProfilePreset]::RHI) {
+        $CmdArgs.Add("RHI/*") | Out-Null
+        $PresetName ="RHI"
+    } elseif ($preset -eq [UECsvProfilePreset]::RDG) {
+        $CmdArgs.Add("RDGCount/*") | Out-Null
+        $PresetName ="RDG"
+    } elseif ($preset -eq [UECsvProfilePreset]::DrawCall) {
+        $CmdArgs.Add("DrawCall/*") | Out-Null
+        $PresetName ="DrawCall"
+    } elseif ($preset -eq [UECsvProfilePreset]::Shaders) {
+        $CmdArgs.Add("Shaders/*") | Out-Null
+        $PresetName ="Shaders"
+    } elseif ($preset -eq [UECsvProfilePreset]::PSO) {
+        $CmdArgs.Add("PSO/*") | Out-Null
+        $PresetName ="PSO"
+    } elseif ($preset -eq [UECsvProfilePreset]::RayTracing) {
+        $CmdArgs.Add("RayTracingGeometry/*") | Out-Null
+        $PresetName ="RayTracing"
+    } elseif ($preset -eq [UECsvProfilePreset]::CPUFreq) {
+        $CmdArgs.Add("AndroidCPU/CPUFreq*") | Out-Null
+        $PresetName ="CPUFreq"
+    } elseif ($preset -eq [UECsvProfilePreset]::SystemMemory) {
+        $CmdArgs.Add("AndroidMemory/*") | Out-Null
+        $PresetName ="SysMemory"
+    } else {
+        $CmdArgs.AddRange(@("FrameTime", "*ThreadTime")) | Out-Null
+        $PresetName ="ThreadTime"
+    }
+
+    # Set stacked for stats with wildcards.
+    if ($Preset -gt [UECsvProfilePreset]::ThreadTime) {
+        $CmdArgs.Add("-stacked") | Out-Null
+    }
+
+    if ($ShowEvents) {
+        $CmdArgs.Add("-showEvents") | Out-Null
+        $CmdArgs.AddRange($ShowEvents) | Out-Null
+    }
+
+    if ($StartEvent) {
+        $CmdArgs.AddRange(@("-startEvent", $StartEvent)) | Out-Null
+    }
+
+    if ($EndEvent) {
+        $CmdArgs.AddRange(@("-endEvent", $EndEvent)) | Out-Null
+    }
+
+    if ($Title) {
+        $CmdArgs.AddRange(@("-title", $Title)) | Out-Null
+    }
+
+    $Ranges = @(($MinX, "-minX"), ($MaxX, "-maxX"), ($MinY, "-minY"), ($MaxY, "-maxY"))
+    foreach ($Entity in $Ranges) {
+        $ArgValue, $ArgName = $Entity[0], $Entity[1]
+        if ($ArgValue) {
+            $CmdArgs.AddRange(@($ArgName, $ArgValue)) | Out-Null
+        }
+    }
+
+    # Create output folder if it does not exist.
+    New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
+    if (!$OutputFileName) {
+        $OutputFileName = Split-Path $Path -LeafBase
+        $OutputFileName += "_$PresetName.svg"
+    }
+
+    $OutputFilePath = Join-Path $OutputFolderPath $OutputFileName
+    $CmdArgs.AddRange(@("-o", $OutputFilePath)) | Out-Null
+
+    CSVToSVG.exe $CmdArgs
+    Write-Host "Convert $Path to $OutputFilePath"
+}
+
+<#
+.SYNOPSIS
+Convert CSV files in a folder to SVG.
+
+.NOTES
+It provides presets with corresponding stats:
+
+* ThreadTime: FrameTime, GameThreadTime, RenderThreadTime, RHIThreadTime
+* Workload: RHI/DrawCalls, RHI/PrimitivesDrawn, GPUSceneInstanceCount, LightCount/All
+
+.EXAMPLE
+Convert-UnrealCsvDirToSvg .\foo -Preset ThreadTime
+
+Compare .csv files in .\foo folder with ThreadTime preset (FrameTime, *ThreadTime).
+
+.EXAMPLE
+Convert-UnrealCsvDirToSvg .\foo -Preset ThreadTime -StartEvent bar
+
+Compare .csv files in .\foo folder and aligned with event bar.
+#>
+function Convert-UnrealCsvDirToSvg {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [ValidateSet("ThreadTime", "Workload")]
+        [string]$Preset,
+        [string]$StatName,
+        [string]$StartEvent,
+        [string]$EndEvent,
+        [string]$OutputNamePrefix,
+        [string]$OutputFolderPath = ".",
+        [single]$MinX,
+        [single]$MaxX,
+        [single]$MinY,
+        [single]$MaxY,
+        [string []]$ShowEvents = "*"
+    )
+
+    $CmdArgs = [System.Collections.ArrayList]@("-csvDir", $Path, "-interactive")
+
+    if ($ShowEvents) {
+        $CmdArgs.Add("-showEvents") | Out-Null
+        $CmdArgs.AddRange($ShowEvents) | Out-Null
+    }
+
+    if ($StartEvent) {
+        $CmdArgs.AddRange(@("-startEvent", $StartEvent)) | Out-Null
+    }
+
+    if ($EndEvent) {
+        $CmdArgs.AddRange(@("-endEvent", $EndEvent)) | Out-Null
+    }
+
+    if ($Title) {
+        $CmdArgs.AddRange(@("-title", $Title)) | Out-Null
+    }
+
+    $Ranges = @(($MinX, "-minX"), ($MaxX, "-maxX"), ($MinY, "-minY"), ($MaxY, "-maxY"))
+    foreach ($Entity in $Ranges) {
+        $ArgValue, $ArgName = $Entity[0], $Entity[1]
+        if ($ArgValue) {
+            $CmdArgs.AddRange(@($ArgName, $ArgValue)) | Out-Null
+        }
+    }
+
+    if ($Preset -eq "ThreadTime") {
+        $StatNameList = @("FrameTime", "GameThreadTime", "RenderThreadTime", "RHIThreadTime")
+    } elseif ($Preset -eq "Workload") {
+        $StatNameList = @("RHI/DrawCalls", "RHI/PrimitivesDrawn", "GPUSceneInstanceCount", "LightCount/All")
+    } else {
+        if (-not $StatName) {
+            Write-Error("Please specify stat name for comparing.")
+            return
+        }
+
+        $StatNameList = @($StatName)
+    }
+
+    # Create output folder if it does not exist.
+    New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
+
+    # We could only set one stat for comparing multiple csv-profiles.
+    foreach ($StatName in $StatNameList) {
+        $FileName = $StatName.Replace("/", "_")
+        if ($OutputNamePrefix) {
+            $OutputFileName = "$OutputNamePrefix`_$FileName.svg"
+        } else {
+            $OutputFileName = "$FileName.svg"
+        }
+
+        $OutputFilePath = Join-Path $OutputFolderPath $OutputFileName
+
+        $ArgList = $CmdArgs.Clone()
+        $ArgList.AddRange(@("-o", $OutputFilePath, "-stats", $StatName)) | Out-Null
+        Start-Process -FilePath CSVToSVG -ArgumentList $ArgList -WorkingDirectory . -PassThru -NoNewWindow
+    }
+}
+
+<#
+.SYNOPSIS
 Enable Vulkan debug markers for Debug/Develop built apk.
 #>
 function Enable-UnrealDebugMarkers {
@@ -877,7 +1306,7 @@ function Enable-UnrealDebugMarkers {
 .SYNOPSIS
 Disable Vulkan debug markers.
 #>
-function Disable-UnrealDebugMarkers { 
+function Disable-UnrealDebugMarkers {
     $LastCommandLine = adb shell getprop debug.ue.commandline.bak
     adb shell setprop debug.ue.commandline "'$LastCommandLine'"
     adb shell setprop debug.ue.commandline.bak "''"
@@ -1150,6 +1579,7 @@ function Save-UnrealGPUDump {
         adb shell rm -r $DeviceOutFolderPath
     }
 }
+
 
 function Show-UnrealLogcat {
     param (

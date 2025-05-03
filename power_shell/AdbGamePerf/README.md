@@ -50,6 +50,11 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |-|-|-|
 |Invoke-UnrealCommand|uecmd|Send console command to connected device|
 |Show-UnrealCommandLine||Show value of debug.ue.commandline|
+|Enable-UnrealCsvProfile||Enable csv profiling|
+|Disable-UnrealCsvProfile||Disable csv profiling|
+|Get-UnrealCsvProfile||Get .csv profile file from device|
+|Convert-UnrealCsvToSvg||Convert single CSV profile to SVG graph|
+|Convert-UnrealCsvDirToSvg||Convert multiple CSV profiles to SVG graph for comparison|
 |Enable-UnrealDebugMarkers||Enable Vulkan draw markers for Debug/Develop built apk|
 |Disable-UnrealDebugMarkers||Disable Vulkan draw markers for Debug/Develop built apk|
 |Start-UnrealFPSChart||Start FPS chart data capture on device|
