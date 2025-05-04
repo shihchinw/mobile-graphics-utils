@@ -488,6 +488,10 @@ Extra ATRACE categories to trace.
 .EXAMPLE
 Start-Perfetto -o foo.perfetto-trace
 
+.EXAMPLE
+Start-Perfetto foobar 5s
+Record a trace named foobar for 5 seconds.
+
 .NOTES
 Record traces on Android: https://perfetto.dev/docs/quickstart/android-tracing (require Python installation)
 
@@ -502,20 +506,16 @@ function Start-Perfetto {
         [string[]]$ExtraAtraceCagetories
     )
 
-    $CmdArgs = New-Object System.Collections.ArrayList
+    $CmdArgs = [System.Collections.ArrayList]@("-b", $Buffer)
 
     if ($Time) {
-        $CmdArgs.Add("-t $Time") | Out-Null
+        $CmdArgs.AddRange(@("-t", $Time)) | Out-Null
     }
 
     if ($Filename) {
         $OutFileName = Get-EncodedFilename $Filename '.perfetto-trace'
-        $CmdArgs.Add("-o $OutFileName") | Out-Null
-        $CmdArgs.Add('-o') | Out-Null
-        $CmdArgs.Add($OutFileName) | Out-Null
+        $CmdArgs.AddRange(@("-o", $OutFileName)) | Out-Null
     }
-
-    $CmdArgs.Add("-b $Buffer") > $null
 
     # For more tracing categories, please refer to
     # https://android.googlesource.com/platform/frameworks/native/+/refs/tags/android-q-preview-5/cmds/atrace/atrace.cpp#100
