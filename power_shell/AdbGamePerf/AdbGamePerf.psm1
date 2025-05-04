@@ -1294,12 +1294,18 @@ function Convert-UnrealCsvDirToSvg {
 
 <#
 .SYNOPSIS
-Enable Vulkan debug markers for Debug/Develop built apk.
+    Enable Vulkan debug markers for Debug/Develop built apk.
+.NOTES
+    We didn't configure start emitting RHI debug markers from commandline because it might slow down the app launch.
+    Therefore, we use Start/Stop-UnrealDebugMarkerEmission to control emission of markers.
+.LINK
+    https://github.com/EpicGames/UnrealEngine/blob/release/Engine/Source/Runtime/VulkanRHI/Private/VulkanDevice.cpp#L485
 #>
 function Enable-UnrealDebugMarkers {
     $LastCommandLine = adb shell getprop debug.ue.commandline
     adb shell setprop debug.ue.commandline.bak "'$LastCommandLine'"
-    adb shell setprop debug.ue.commandline -forcevulkanddrawmarkers
+    adb shell setprop debug.ue.commandline "-forcevulkanddrawmarkers"
+    Show-UnrealCommandLine
 }
 
 <#
@@ -1310,6 +1316,33 @@ function Disable-UnrealDebugMarkers {
     $LastCommandLine = adb shell getprop debug.ue.commandline.bak
     adb shell setprop debug.ue.commandline "'$LastCommandLine'"
     adb shell setprop debug.ue.commandline.bak "''"
+    Show-UnrealCommandLine
+}
+
+<#
+.SYNOPSIS
+Start emitting RHI debug markers of draw calls and RDG passes.
+
+.NOTES
+Previously, we need to set following CVars for different event types individually:
+    r.ShowMaterialDrawEvents 1
+    r.EmitMeshDrawEvents 1
+    r.Nanite.ShowMeshDrawEvents 1
+    r.RDG.Events 3
+
+Now, we could set r.RHISetGPUCaptureOptions directly.
+https://github.com/EpicGames/UnrealEngine/blob/2d53fcab0066b1f16dd956b227720841cad0f6f7/Engine/Source/Runtime/RHI/Private/RHI.cpp#L72
+#>
+function Start-UnrealDebugMarkerEmission {
+    uecmd r.RHISetGPUCaptureOptions 1
+}
+
+<#
+.SYNOPSIS
+Stop emitting RHI debug markers of draw calls and RDG passes.
+#>
+function Stop-UnrealDebugMarkerEmission {
+    uecmd r.RHISetGPUCaptureOptions 0
 }
 
 <#

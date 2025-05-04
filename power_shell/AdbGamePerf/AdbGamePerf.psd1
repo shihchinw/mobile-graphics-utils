@@ -85,10 +85,11 @@ FunctionsToExport = @(
     'Save-StreamlineCapture',
     'Invoke-UnrealCommand',
     'Show-UnrealCommandLine',
-    'Enable-UnrealCsvProfile', 'Disable-UnrealCsvProfile', 
+    'Enable-UnrealCsvProfile', 'Disable-UnrealCsvProfile',
     'Get-UnrealCsvProfile',
     'Convert-UnrealCsvToSvg', 'Convert-UnrealCsvDirToSvg'
     'Enable-UnrealDebugMarkers', 'Disable-UnrealDebugmarkers',
+    'Start-UnrealDebugMarkerEmission', 'Stop-UnrealDebugMarkerEmission',
     'Start-UnrealFPSChart', 'Stop-UnrealFPSChart',
     'Start-UnrealStatFile', 'Stop-UnrealStatFile',
     'Start-UnrealInsight', 'Stop-UnrealInsight',

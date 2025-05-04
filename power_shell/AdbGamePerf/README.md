@@ -57,6 +57,8 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Convert-UnrealCsvDirToSvg||Convert multiple CSV profiles to SVG graph for comparison|
 |Enable-UnrealDebugMarkers||Enable Vulkan draw markers for Debug/Develop built apk|
 |Disable-UnrealDebugMarkers||Disable Vulkan draw markers for Debug/Develop built apk|
+|Start-UnrealDebugMarkerEmission||Start emitting debug markers of draw calls and RDG passes.|
+|Stop-UnrealDebugMarkerEmission||Stop emitting debug markers of draw calls and RDG passes.|
 |Start-UnrealFPSChart||Start FPS chart data capture on device|
 |Stop-UnrealFPSChart||Stop FPS chart data capture on device|
 |Start-UnrealStatFile||Start a statistics capture|
