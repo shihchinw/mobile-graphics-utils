@@ -270,9 +270,6 @@ function Wait-DeviceApp {
     }
 }
 
-function Enter-AdbShell { adb shell "$Args" }
-Set-Alias -Name as -Value Enter-AdbShell
-
 <#
 .SYNOPSIS
 Watch logcat of specific application.
@@ -1683,19 +1680,6 @@ function Save-UnrealGPUDump {
     }
 }
 
-
-function Show-UnrealLogcat {
-    param (
-        [switch] $LogProfilingDebugging
-    )
-
-    if ($LogProfilingDebugging) {
-        adb logcat UE:D UE4:D *:S -e LogProfilingDebugging -d $Args
-    } else {
-        adb logcat UE:D UE4:D *:S -d $Args
-    }
-}
-
 function Show-UnrealSynthBenchmark {
     adb logcat -c
     uecmd SynthBenchmark
@@ -1818,7 +1802,8 @@ function Hide-UnrealRenderFeature {
     }
 }
 
+Set-Alias -Name uec2s -Value Convert-UnrealCsvToSvg
+Set-Alias -Name uecd2s -Value Convert-UnrealCsvDirToSvg
 Set-Alias -Name uest -Value Switch-UnrealStats
-Set-Alias -Name uelog -Value Show-UnrealLogcat
 Set-Alias -Name ueshow -Value Show-UnrealRenderFeature
 Set-Alias -Name uehide -Value Hide-UnrealRenderFeature

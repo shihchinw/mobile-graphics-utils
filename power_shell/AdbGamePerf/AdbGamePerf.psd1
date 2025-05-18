@@ -72,7 +72,7 @@ PowerShellVersion = '5.0'
 FunctionsToExport = @(
     'Import-AGPConfig',
     'Get-FocusedPackageName', 'Get-PackageNameList',
-    'Enter-AdbShell', 'Watch-Logcat',
+    'Watch-Logcat',
     'Show-MemoryInfo', 'Watch-MemoryInfo',
     'Save-DeviceScreenCap',
     'Save-DeviceScreenRecord',
@@ -95,7 +95,7 @@ FunctionsToExport = @(
     'Start-UnrealInsight', 'Stop-UnrealInsight',
     'Connect-UnrealInsight', 'Disconnect-UnrealInsight',
     'Save-UnrealCVars', 'Save-UnrealGPUDump',
-    'Show-UnrealLogcat', 'Export-UnrealCallStats',
+    'Export-UnrealCallStats',
     'Show-UnrealSynthBenchmark',
     'Show-UnrealRenderFeature', 'Hide-UnrealRenderFeature',
     'Switch-UnrealStats')
@@ -107,7 +107,7 @@ CmdletsToExport = @()
 VariablesToExport = '*'
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('as', 'wl', 'saap', 'sasg', 'svsc', 'ipa', 'lwi', 'uecmd', 'uest', 'uelog', 'ueshow', 'uehide')
+AliasesToExport = @('wl', 'saap', 'sasg', 'svsc', 'ipa', 'lwi', 'uecmd', 'uec2s', 'uecd2s', 'uest', 'ueshow', 'uehide')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()

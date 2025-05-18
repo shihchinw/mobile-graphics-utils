@@ -49,12 +49,12 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Command|Alias|Usage|
 |-|-|-|
 |Invoke-UnrealCommand|uecmd|Send console command to connected device|
-|Show-UnrealCommandLine||Show value of debug.ue.commandline|
+|Show-UnrealCommandLine||Show value of 'debug.ue.commandline'|
 |Enable-UnrealCsvProfile||Enable csv profiling|
 |Disable-UnrealCsvProfile||Disable csv profiling|
 |Get-UnrealCsvProfile||Get .csv profile file from device|
-|Convert-UnrealCsvToSvg||Convert single CSV profile to SVG graph|
-|Convert-UnrealCsvDirToSvg||Convert multiple CSV profiles to SVG graph for comparison|
+|Convert-UnrealCsvToSvg|uec2s|Convert single CSV profile to SVG graph|
+|Convert-UnrealCsvDirToSvg|uecd2s|Convert multiple CSV profiles to SVG graph for comparison|
 |Enable-UnrealDebugMarkers||Enable Vulkan draw markers for Debug/Develop built apk|
 |Disable-UnrealDebugMarkers||Disable Vulkan draw markers for Debug/Develop built apk|
 |Start-UnrealDebugMarkerEmission||Start emitting debug markers of draw calls and RDG passes.|
@@ -69,7 +69,6 @@ For more details and examples of each command, please use `Get-Help` to get deta
 |Disconnect-UnrealInsight||Clear trace connection configuration|
 |Save-UnrealCVars||Save CVars dump and pull files to local PC|
 |Save-UnrealGPUDump||Save GPU dump and pull files to local PC|
-|Show-UnrealLogcat|uelog|Show logcat messages related to Unreal engine|
 |Show-UnrealSynthBenchmark||Show results of SynthBenchmark|
 |Switch-UnrealStats|uest|Toggle stat display on device screen|
 |Show-UnrealRenderFeature|ueshow|Show rendering features|
