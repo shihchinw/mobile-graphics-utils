@@ -1046,7 +1046,6 @@ function Get-UnrealCsvProfile {
 }
 
 enum UECsvProfilePreset {
-    Unknown
     CPUFreq
     SystemMemory
     ThreadTime
@@ -1058,6 +1057,7 @@ enum UECsvProfilePreset {
     Shaders
     PSO
     RayTracing
+    PassTime
 }
 
 <#
@@ -1080,6 +1080,7 @@ It provides presets with corresponding stats:
 * Shaders: Shaders/*
 * PSO: PSO/*
 * RayTracing: RayTracingGeometry/*
+* PassTime: PassTime/*
 
 .PARAMETER Filepath
 Specifies a .csv profile.
@@ -1087,13 +1088,31 @@ Specifies a .csv profile.
 .PARAMETER ShowEvents
 Specifies event names to show in the graph. Default is '*' (all events).
 
+.PARAMETER Title
+Specifies title of output figure. Can use placeholder '{0}' for Preset name.
+
 .LINK
 https://dev.epicgames.com/documentation/en-us/unreal-engine/csvtosvg-tool?application_version=4.27
 
 .EXAMPLE
 Convert-UnrealCsvToSvg foo.csv -Preset ThreadTime
 
-Generate svg graph for (FrameTime, GameThreadTime, RenderThreadTime, RHIThreadTime).
+Generate svg for (FrameTime, GameThreadTime, RenderThreadTime, RHIThreadTime).
+
+.EXAMPLE
+Convert-UnrealCsvToSvg foo.csv -Preset ThreadTime -MaxAutoY 100
+
+Generate ThreadTime svg and clamp auto max Y value to 100.
+
+.EXAMPLE
+Convert-UnrealCsvToSvg foo.csv -Preset RenderThread -IgnoreStats Exclusive/RenderThread/EventWait
+
+Generate RenderThread stats graph without Exclusive/RenderThread/EventWait.
+
+.EXAMPLE
+Convert-UnrealCsvToSvg foo.csv -Preset ThreadTime -Title "FOO: {0}"
+
+Generate ThreadTime svg with title "FOO: ThreadTime" ({0} would be replaced with preset name).
 #>
 function Convert-UnrealCsvToSvg {
     param (
@@ -1102,48 +1121,67 @@ function Convert-UnrealCsvToSvg {
         [string]$StartEvent,
         [string]$EndEvent,
         [string]$Title,
+        [string]$IgnoreStats,
         [string]$OutputFileName,
         [string]$OutputFolderPath = ".",
         [single]$MinX,
         [single]$MaxX,
         [single]$MinY,
         [single]$MaxY,
+        [single]$MaxAutoY,
+        [single]$AvgThreshold,
+        [uint]$SkipRows,
         [UECsvProfilePreset]$Preset = [UECsvProfilePreset]::ThreadTime,
         [string []]$ShowEvents = '*'
     )
 
-    $CmdArgs = [System.Collections.ArrayList]@("-csvs", $Path, "-interactive", "-stats")
+    $CmdArgs = [System.Collections.ArrayList]@("-csvs", $Path, "-interactive", "-showAverages", "-stats")
     $PresetName = "Unknown"
+    $HideStatPrefix = ""
 
     if ($Preset -eq [UECsvProfilePreset]::RenderThread) {
-        $CmdArgs.Add("Exclusive/RenderThread/*") | Out-Null
+        $HideStatPrefix = "Exclusive/RenderThread/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="RenderThread"
     } elseif ($preset -eq [UECsvProfilePreset]::GameThread) {
-        $CmdArgs.Add("Exclusive/GameThread/*") | Out-Null
+        $HideStatPrefix = "Exclusive/GameThread/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="GameThread"
     } elseif ($preset -eq [UECsvProfilePreset]::RHI) {
-        $CmdArgs.Add("RHI/*") | Out-Null
+        $HideStatPrefix = "RHI/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="RHI"
     } elseif ($preset -eq [UECsvProfilePreset]::RDG) {
-        $CmdArgs.Add("RDGCount/*") | Out-Null
+        $HideStatPrefix = "RDGCount/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="RDG"
     } elseif ($preset -eq [UECsvProfilePreset]::DrawCall) {
-        $CmdArgs.Add("DrawCall/*") | Out-Null
+        $HideStatPrefix = "DrawCall/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="DrawCall"
     } elseif ($preset -eq [UECsvProfilePreset]::Shaders) {
-        $CmdArgs.Add("Shaders/*") | Out-Null
+        $HideStatPrefix = "Shaders/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="Shaders"
     } elseif ($preset -eq [UECsvProfilePreset]::PSO) {
-        $CmdArgs.Add("PSO/*") | Out-Null
+        $HideStatPrefix = "PSO/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="PSO"
     } elseif ($preset -eq [UECsvProfilePreset]::RayTracing) {
-        $CmdArgs.Add("RayTracingGeometry/*") | Out-Null
+        $HideStatPrefix = "RayTracingGeometry/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="RayTracing"
+    } elseif ($preset -eq [UECsvProfilePreset]::PassTime) {
+        $HideStatPrefix = "PassTime/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
+        $PresetName ="PassTime"
     } elseif ($preset -eq [UECsvProfilePreset]::CPUFreq) {
+        $HideStatPrefix = "AndroidCPU/"
         $CmdArgs.Add("AndroidCPU/CPUFreq*") | Out-Null
         $PresetName ="CPUFreq"
     } elseif ($preset -eq [UECsvProfilePreset]::SystemMemory) {
-        $CmdArgs.Add("AndroidMemory/*") | Out-Null
+        $HideStatPrefix = "AndroidMemory/"
+        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
         $PresetName ="SysMemory"
     } else {
         $CmdArgs.AddRange(@("FrameTime", "*ThreadTime")) | Out-Null
@@ -1160,19 +1198,25 @@ function Convert-UnrealCsvToSvg {
         $CmdArgs.AddRange($ShowEvents) | Out-Null
     }
 
-    if ($StartEvent) {
-        $CmdArgs.AddRange(@("-startEvent", $StartEvent)) | Out-Null
+    if (! $Title) {
+        # Use stat prefix as default title of figure.
+        $Title = $HideStatPrefix
+    } else {
+        # Resolve {0} in $Title with preset name.
+        $Title = $Title -f $PresetName
     }
 
-    if ($EndEvent) {
-        $CmdArgs.AddRange(@("-endEvent", $EndEvent)) | Out-Null
+    $ArgsMap = @(($StartEvent, "-startEvent"), ($EndEvent, "-endEvent"), ($Title, "-title"), ($HideStatPrefix, "-hideStatPrefix"),
+                 ($IgnoreStats, "-ignoreStats"), ($AvgThreshold, "-averageThreshold"), ($SkipRows, "-skipRows"))
+
+    foreach ($Entity in $ArgsMap) {
+        $ArgValue, $ArgName = $Entity[0], $Entity[1]
+        if ($ArgValue) {
+            $CmdArgs.AddRange(@($ArgName, $ArgValue)) | Out-Null
+        }
     }
 
-    if ($Title) {
-        $CmdArgs.AddRange(@("-title", $Title)) | Out-Null
-    }
-
-    $Ranges = @(($MinX, "-minX"), ($MaxX, "-maxX"), ($MinY, "-minY"), ($MaxY, "-maxY"))
+    $Ranges = @(($MinX, "-minX"), ($MaxX, "-maxX"), ($MinY, "-minY"), ($MaxY, "-maxY"), ($MaxAutoY, "-maxAutoMaxY"))
     foreach ($Entity in $Ranges) {
         $ArgValue, $ArgName = $Entity[0], $Entity[1]
         if ($ArgValue) {
@@ -1213,45 +1257,55 @@ Compare .csv files in .\foo folder with ThreadTime preset (FrameTime, *ThreadTim
 Convert-UnrealCsvDirToSvg .\foo -Preset ThreadTime -StartEvent bar
 
 Compare .csv files in .\foo folder and aligned with event bar.
+
+.EXAMPLE
+Convert-UnrealCsvDirToSvg .\foo -StatName foobar
+
+Compare .csv files in .\foo folder in terms of the stat named "foobar".
+
+.EXAMPLE
+Convert-UnrealCsvDirToSvg .\foo -Preset ThreadTime -Title "FOOBAR: {0}"
+
+Generate a ThreadTime svg with title "FOOBAR: ThreadTime" ({0} would be replaced with preset name).
 #>
 function Convert-UnrealCsvDirToSvg {
     param (
         [Parameter(Mandatory = $true)]
         [string]$Path,
-        [ValidateSet("ThreadTime", "Workload")]
+        [ValidateSet("ThreadTime", "Workload", "CPU", "Memory")]
         [string]$Preset,
         [string]$StatName,
         [string]$StartEvent,
         [string]$EndEvent,
+        [string]$Title,
         [string]$OutputNamePrefix,
         [string]$OutputFolderPath = ".",
         [single]$MinX,
         [single]$MaxX,
         [single]$MinY,
         [single]$MaxY,
+        [single]$MaxAutoY,
+        [uint]$SkipRows,
         [string []]$ShowEvents = "*"
     )
 
-    $CmdArgs = [System.Collections.ArrayList]@("-csvDir", $Path, "-interactive")
+    $CmdArgs = [System.Collections.ArrayList]@("-csvDir", $Path, "-interactive", "-showAverages")
 
     if ($ShowEvents) {
         $CmdArgs.Add("-showEvents") | Out-Null
         $CmdArgs.AddRange($ShowEvents) | Out-Null
     }
 
-    if ($StartEvent) {
-        $CmdArgs.AddRange(@("-startEvent", $StartEvent)) | Out-Null
+    $ArgsMap = @(($StartEvent, "-startEvent"), ($EndEvent, "-endEvent"), ($SkipRows, "-skipRows"))
+
+    foreach ($Entity in $ArgsMap) {
+        $ArgValue, $ArgName = $Entity[0], $Entity[1]
+        if ($ArgValue) {
+            $CmdArgs.AddRange(@($ArgName, $ArgValue)) | Out-Null
+        }
     }
 
-    if ($EndEvent) {
-        $CmdArgs.AddRange(@("-endEvent", $EndEvent)) | Out-Null
-    }
-
-    if ($Title) {
-        $CmdArgs.AddRange(@("-title", $Title)) | Out-Null
-    }
-
-    $Ranges = @(($MinX, "-minX"), ($MaxX, "-maxX"), ($MinY, "-minY"), ($MaxY, "-maxY"))
+    $Ranges = @(($MinX, "-minX"), ($MaxX, "-maxX"), ($MinY, "-minY"), ($MaxY, "-maxY"), ($MaxAutoY, "-maxAutoMaxY"))
     foreach ($Entity in $Ranges) {
         $ArgValue, $ArgName = $Entity[0], $Entity[1]
         if ($ArgValue) {
@@ -1262,7 +1316,13 @@ function Convert-UnrealCsvDirToSvg {
     if ($Preset -eq "ThreadTime") {
         $StatNameList = @("FrameTime", "GameThreadTime", "RenderThreadTime", "RHIThreadTime")
     } elseif ($Preset -eq "Workload") {
-        $StatNameList = @("RHI/DrawCalls", "RHI/PrimitivesDrawn", "GPUSceneInstanceCount", "LightCount/All")
+        $StatNameList = @("RHI/DrawCalls", "RHI/PrimitivesDrawn", "RDGCount/Passes", "GPUSceneInstanceCount", "LightCount/All")
+    } elseif ($Preset -eq "CPU") {
+        $StatNameList = @("AndroidCPU/CPUFreqMHzGroup0", "AndroidCPU/CPUFreqMHzGroup1", "AndroidCPU/CPUFreqMHzGroup2", "AndroidCPU/CPUTemp",
+                          "AndroidCPU/CPUFreqPercentageGroup0", "AndroidCPU/CPUFreqPercentageGroup1", "AndroidCPU/CPUFreqPercentageGroup2")
+    } elseif ($Preset -eq "Memory") {
+        $StatNameList = @("AndroidMemory/Mem_RSS", "AndroidMemory/Mem_Swap", "AndroidMemory/Mem_TotalUsed",
+                          "RayTracingGeometry/TotalResidentSizeMB")
     } else {
         if (-not $StatName) {
             Write-Error("Please specify stat name for comparing.")
@@ -1288,6 +1348,16 @@ function Convert-UnrealCsvDirToSvg {
 
         $ArgList = $CmdArgs.Clone()
         $ArgList.AddRange(@("-o", $OutputFilePath, "-stats", $StatName)) | Out-Null
+
+        if ($Title) {
+            # Resolve placeholder {0} in title with stat name.
+            # Note: Can't use named placeholder with PowerShell 7.4. Therefore, format with indexed placeholder instead.
+            $FigureTitle = ($Title -f $StatName).Clone()
+
+            # Note: We need to explicitly add quotes to figure title; otherwise ' ' would be replaced with ';' if we invoke csvtosvg by Start-Process.
+            $ArgList.AddRange(@("-title", "`"$FigureTitle`"")) | Out-Null
+        }
+
         Start-Process -FilePath CSVToSVG -ArgumentList $ArgList -WorkingDirectory . -PassThru -NoNewWindow
     }
 }
