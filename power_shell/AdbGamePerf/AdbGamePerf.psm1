@@ -1231,6 +1231,11 @@ function Convert-UnrealCsvToSvg {
     if (!$OutputFileName) {
         $OutputFileName = Split-Path $Path -LeafBase
         $OutputFileName += "_$PresetName.svg"
+    } else {
+        $HasOutputFileExt = [System.IO.Path]::GetExtension($OutputFileName) -ne ""
+        if (!$HasOutputFileExt) {
+            $OutputFileName += ".svg"
+        }
     }
 
     $OutputFilePath = Join-Path $OutputFolderPath $OutputFileName
