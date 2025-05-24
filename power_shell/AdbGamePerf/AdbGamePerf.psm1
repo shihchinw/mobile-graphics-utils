@@ -1135,14 +1135,19 @@ function Convert-UnrealCsvToSvg {
     $CmdArgs = [System.Collections.ArrayList]@("-csvs", $Path, "-interactive", "-showAverages", "-stats")
     $PresetName = "Unknown"
     $HideStatPrefix = ""
+    $StackTotalStat = $null
 
     if ($Preset -eq [UECsvProfilePreset]::RenderThread) {
+        $StackTotalStat = "RenderThreadTime"
         $HideStatPrefix = "Exclusive/RenderThread/"
-        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
+        $CmdArgs.AddRange(@("$HideStatPrefix*", $StackTotalStat)) | Out-Null
+        $IgnoreStats += ";Exclusive/RenderThread/FetchVisibilityForPrimitives;Exclusive/RenderThread/EventWait*"
         $PresetName ="RenderThread"
     } elseif ($preset -eq [UECsvProfilePreset]::GameThread) {
+        $StackTotalStat = "GameThreadTime"
         $HideStatPrefix = "Exclusive/GameThread/"
-        $CmdArgs.Add("$HideStatPrefix*") | Out-Null
+        $CmdArgs.AddRange(@("$HideStatPrefix*", $StackTotalStat)) | Out-Null
+        $IgnoreStats += ";Exclusive/GameThread/EventWait*"
         $PresetName ="GameThread"
     } elseif ($preset -eq [UECsvProfilePreset]::RHI) {
         $HideStatPrefix = "RHI/"
@@ -1204,7 +1209,7 @@ function Convert-UnrealCsvToSvg {
     }
 
     $ArgsMap = @(($StartEvent, "-startEvent"), ($EndEvent, "-endEvent"), ($Title, "-title"), ($HideStatPrefix, "-hideStatPrefix"),
-                 ($IgnoreStats, "-ignoreStats"), ($AvgThreshold, "-averageThreshold"), ($SkipRows, "-skipRows"))
+                 ($StackTotalStat, "-stackTotalStat"), ($IgnoreStats, "-ignoreStats"), ($AvgThreshold, "-averageThreshold"), ($SkipRows, "-skipRows"))
 
     foreach ($Entity in $ArgsMap) {
         $ArgValue, $ArgName = $Entity[0], $Entity[1]
