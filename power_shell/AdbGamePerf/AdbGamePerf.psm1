@@ -1127,6 +1127,7 @@ function Convert-UnrealCsvToSvg {
         [single]$MaxY,
         [single]$MaxAutoY,
         [single]$AvgThreshold,
+        [uint]$SmoothSize,
         [uint]$SkipRows,
         [UECsvProfilePreset]$Preset = [UECsvProfilePreset]::ThreadTime,
         [string []]$ShowEvents = '*'
@@ -1226,6 +1227,10 @@ function Convert-UnrealCsvToSvg {
         }
     }
 
+    if ($SmoothSize) {
+        $CmdArgs.AddRange(@("-smooth", "-smoothKernelSize", $SmoothSize)) | Out-Null
+    }
+
     # Create output folder if it does not exist.
     New-Item -ItemType Directory -Force -Path $OutputFolderPath | Out-Null
     if (!$OutputFileName) {
@@ -1292,6 +1297,7 @@ function Convert-UnrealCsvDirToSvg {
         [single]$MinY,
         [single]$MaxY,
         [single]$MaxAutoY,
+        [uint]$SmoothSize,
         [uint]$SkipRows,
         [string []]$ShowEvents = "*"
     )
@@ -1318,6 +1324,10 @@ function Convert-UnrealCsvDirToSvg {
         if ($ArgValue) {
             $CmdArgs.AddRange(@($ArgName, $ArgValue)) | Out-Null
         }
+    }
+
+    if ($SmoothSize) {
+        $CmdArgs.AddRange(@("-smooth", "-smoothKernelSize", $SmoothSize)) | Out-Null
     }
 
     $StatNameList = [System.Collections.ArrayList]@()
