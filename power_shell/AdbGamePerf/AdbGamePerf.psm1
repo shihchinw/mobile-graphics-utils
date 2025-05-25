@@ -1279,7 +1279,7 @@ function Convert-UnrealCsvDirToSvg {
     param (
         [Parameter(Mandatory = $true)]
         [string]$Path,
-        [ValidateSet("ThreadTime", "Workload", "CPU", "Memory")]
+        [ValidateSet("ThreadTime", "Workload", "CPU", "Memory", "All")]
         [string]$Preset,
         [string]$StatName,
         [string]$StartEvent,
@@ -1320,17 +1320,26 @@ function Convert-UnrealCsvDirToSvg {
         }
     }
 
-    if ($Preset -eq "ThreadTime") {
-        $StatNameList = @("FrameTime", "GameThreadTime", "RenderThreadTime", "RHIThreadTime")
-    } elseif ($Preset -eq "Workload") {
-        $StatNameList = @("RHI/DrawCalls", "RHI/PrimitivesDrawn", "RDGCount/Passes", "GPUSceneInstanceCount", "LightCount/All")
-    } elseif ($Preset -eq "CPU") {
-        $StatNameList = @("AndroidCPU/CPUFreqMHzGroup0", "AndroidCPU/CPUFreqMHzGroup1", "AndroidCPU/CPUFreqMHzGroup2", "AndroidCPU/CPUTemp",
-                          "AndroidCPU/CPUFreqPercentageGroup0", "AndroidCPU/CPUFreqPercentageGroup1", "AndroidCPU/CPUFreqPercentageGroup2")
-    } elseif ($Preset -eq "Memory") {
-        $StatNameList = @("AndroidMemory/Mem_RSS", "AndroidMemory/Mem_Swap", "AndroidMemory/Mem_TotalUsed",
-                          "RayTracingGeometry/TotalResidentSizeMB")
-    } else {
+    $StatNameList = [System.Collections.ArrayList]@()
+
+    if (($Preset -eq "ThreadTime") -or ($Preset -eq "All")) {
+        $StatNameList.AddRange(@("FrameTime", "GameThreadTime", "RenderThreadTime", "RHIThreadTime")) | Out-Null
+    }
+
+    if (($Preset -eq "Workload") -or ($Preset -eq "All")) {
+        $StatNameList.AddRange(@("RHI/DrawCalls", "RHI/PrimitivesDrawn", "RDGCount/Passes", "GPUSceneInstanceCount", "LightCount/All")) | Out-Null
+    }
+
+    if (($Preset -eq "CPU") -or ($Preset -eq "All")) {
+        $StatNameList.AddRange(@("AndroidCPU/CPUFreqMHzGroup0", "AndroidCPU/CPUFreqMHzGroup1", "AndroidCPU/CPUFreqMHzGroup2", "AndroidCPU/CPUTemp",
+                          "AndroidCPU/CPUFreqPercentageGroup0", "AndroidCPU/CPUFreqPercentageGroup1", "AndroidCPU/CPUFreqPercentageGroup2")) | Out-Null
+    }
+
+    if (($Preset -eq "Memory") -or ($Preset -eq "All")) {
+        $StatNameList.AddRange(@("AndroidMemory/Mem_RSS", "AndroidMemory/Mem_Swap", "AndroidMemory/Mem_TotalUsed", "RayTracingGeometry/TotalResidentSizeMB")) | Out-Null
+    }
+
+    if (!$Preset) {
         if (-not $StatName) {
             Write-Error("Please specify stat name for comparing.")
             return
